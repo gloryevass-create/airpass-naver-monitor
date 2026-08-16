@@ -4,7 +4,10 @@ import { syncKeywords, type SyncResult, type SyncedKeyword } from "../skills/nav
 import { getOrFetchRssPosts } from "./blog-rss";
 import { getOrComputeScrapeTargets } from "./keyword-scope";
 
-export const BLOG_KEYWORD_COUNT = 30;
+// 매칭되는 키워드는 전부 검색한다(917개 등록 키워드 중 실제 게시물 제목과 겹치는 것만
+// 골라내는 방식이라 이미 자연스럽게 좁혀져 있음 — 사용자 확인, 2026-08-18). 상한만 넉넉히
+// 잡아 안전장치로 둔다.
+export const BLOG_KEYWORD_COUNT = 100;
 
 export type BlogKeywordTarget = SyncedKeyword & { titleMatchCount: number };
 
