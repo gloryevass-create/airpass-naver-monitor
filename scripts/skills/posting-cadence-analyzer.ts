@@ -39,7 +39,11 @@ export function analyzeCadence(date: string = todayKst()): CadenceResult[] {
       continue;
     }
 
-    const dates = own.map((p) => new Date(`${p.published_at}T00:00:00Z`).getTime());
+    // 발행 간격은 최근 30일 내 게시물만으로 계산한다 — 전체 이력으로 계산하면 초기의
+    // 뜸한 시기까지 섞여 최근 실제 포스팅 빈도를 왜곡한다(예: 최근엔 자주 올리는데
+    // 전체 평균은 예전의 뜸한 시기 탓에 크게 나옴).
+    const recent = own.filter((p) => p.published_at! >= cutoffStr);
+    const dates = recent.map((p) => new Date(`${p.published_at}T00:00:00Z`).getTime());
     let totalGapDays = 0;
     for (let i = 0; i < dates.length - 1; i++) {
       totalGapDays += (dates[i] - dates[i + 1]) / (1000 * 60 * 60 * 24);
@@ -50,7 +54,7 @@ export function analyzeCadence(date: string = todayKst()): CadenceResult[] {
       competitor_name: competitor.name,
       avg_interval_days: avgIntervalDays != null ? Math.round(avgIntervalDays * 10) / 10 : null,
       last_post_at: own[0].published_at,
-      post_count_30d: own.filter((p) => p.published_at! >= cutoffStr).length,
+      post_count_30d: recent.length,
     });
   }
 
