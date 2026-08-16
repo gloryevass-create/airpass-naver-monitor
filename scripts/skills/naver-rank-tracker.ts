@@ -7,6 +7,7 @@ export type RankResult = {
   naver_keyword_id: string;
   keyword: string;
   ourRank: number | null; // 1-based, 없으면 null
+  avgCpc: number | null; // 실제 집행 평균 CPC(추정치 아님) — 클릭이 없었으면 null
   skipped?: boolean;
   error?: string;
 };
@@ -42,16 +43,25 @@ export async function trackRank(date: string = todayKst()): Promise<RankResult[]
         .filter((d) => d.impCnt > 0)
         .sort((a, b) => (a.dateEnd < b.dateEnd ? 1 : -1));
 
+      // 평균 CPC는 입찰 추정치가 아니라 최근 7일간 실제 집행된 지출액/클릭수로 계산한
+      // 실제 평균 단가다(biz channel 연동 없이도 얻을 수 있음) — 클릭이 하나도 없었던
+      // 기간이면 나눗셈이 무의미하므로 null로 둔다.
+      const totalClicks = data.reduce((sum, d) => sum + d.clkCnt, 0);
+      const totalSales = data.reduce((sum, d) => sum + d.salesAmt, 0);
+      const avgCpc = totalClicks > 0 ? Math.round((totalSales / totalClicks) * 100) / 100 : null;
+
       results.push({
         naver_keyword_id: kw.naver_keyword_id,
         keyword: kw.keyword,
         ourRank: withImpressions[0]?.avgRnk ?? null,
+        avgCpc,
       });
     } catch (e) {
       results.push({
         naver_keyword_id: kw.naver_keyword_id,
         keyword: kw.keyword,
         ourRank: null,
+        avgCpc: null,
         skipped: true,
         error: (e as Error).message,
       });

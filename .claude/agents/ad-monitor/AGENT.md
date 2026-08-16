@@ -37,7 +37,9 @@ Track A(네이버 키워드 광고 모니터링)를 A0부터 A8까지 순서대�
 7. **A8 — Supabase 반영** (`supabase-sync` 스킬): `data/processed/ads_<날짜>.json`의 `metrics`
    배열은 **`data/raw/<날짜>/searchad_stats.json`에 있는 전체 키워드**(917개 규모, A2 결과)를
    빠짐없이 담아야 한다 — `rank_snapshot.json`(A3, 월간검색량 상위 50개만)의 키워드만 담으면
-   안 된다. `our_rank`는 `rank_snapshot.json`에 있는 키워드만 채우고, 나머지는 `null`로 둔다
+   안 된다. `our_rank`와 `avg_cpc`(실제 집행 평균 단가, 추정치 아님)는 `rank_snapshot.json`에
+   있는 키워드만 채우고, 나머지는 `null`로 둔다(둘 다 `/stats` 공식 통계 API 응답에서
+   같이 나오는 값이라 A3에서 함께 확보된다 — 별도 API 호출 불필요)
    (⚠️ 시범 실행 중 이 둘을 혼동해 `rank_snapshot.json` 50개만 반영한 적이 있었다 — 그러면
    대시보드의 "키워드별 상세" 표와 "콘텐츠 매칭 키워드" 표가 전체 917개가 아니라 50개
    중에서만 계산돼 데이터가 실제보다 훨씬 적게 나온다). A2.5 결과(`data/raw/<날짜>/account_stats.json`)를
