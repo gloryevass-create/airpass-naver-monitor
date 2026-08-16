@@ -11,7 +11,7 @@ type Tables = Database["public"]["Tables"];
  * 반환값은 이후 다른 테이블(ad_spend_estimates 등)의 competitor_id 조회에 쓰는 name→id 맵.
  */
 export async function ensureCompetitors(
-  configCompetitors: { name: string; domain?: string; blog_id?: string }[]
+  configCompetitors: { name: string; domain?: string | null; blog_id?: string | null }[]
 ): Promise<Map<string, string>> {
   const supabase = getSupabaseClient();
   const { data: existing, error: selectError } = await supabase.from("competitors").select("*");
@@ -44,6 +44,29 @@ export async function upsertKeywords(rows: Tables["keywords"]["Insert"][]) {
     .from("keywords")
     .upsert(rows, { onConflict: "naver_keyword_id" });
   if (error) throw new Error(`keywords upsert 실패: ${error.message}`);
+}
+
+/** 현재 Supabase에 status='ELIGIBLE'로 남아있는 키워드들의 naver_keyword_id 목록.
+ * naver-keyword-sync가 오늘 동기화 결과와 비교해 REMOVED 처리 대상을 정확히 찾는 데 쓴다. */
+export async function fetchEligibleKeywordIds(): Promise<string[]> {
+  const { data, error } = await getSupabaseClient()
+    .from("keywords")
+    .select("naver_keyword_id")
+    .eq("status", "ELIGIBLE");
+  if (error) throw new Error(`keywords 조회 실패: ${error.message}`);
+  return (data ?? []).map((k) => k.naver_keyword_id);
+}
+
+/** 계정에서 더 이상 ELIGIBLE로 동기화되지 않는 키워드(캠페인/광고그룹 일시중지·삭제 등)를
+ * status='REMOVED'로 표시한다 — 대시보드 KPI가 status='ELIGIBLE'만 활성으로 집계하므로
+ * 이 정리를 해야 더 이상 운영되지 않는 키워드가 계속 "활성"으로 카운트되지 않는다. */
+export async function markKeywordsRemoved(naverKeywordIds: string[]) {
+  if (naverKeywordIds.length === 0) return;
+  const { error } = await getSupabaseClient()
+    .from("keywords")
+    .update({ status: "REMOVED", updated_at: new Date().toISOString() })
+    .in("naver_keyword_id", naverKeywordIds);
+  if (error) throw new Error(`keywords REMOVED 표시 실패: ${error.message}`);
 }
 
 export async function upsertKeywordDailyMetrics(rows: Tables["keyword_daily_metrics"]["Insert"][]) {

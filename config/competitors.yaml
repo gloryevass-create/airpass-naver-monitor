@@ -1,13 +1,23 @@
-# 모니터링 대상 경쟁사 (수동 등록, 5~10곳)
-# 아직 실제 목록을 받지 못해 예시만 남겨둔다 — 실제 값 확인 후 이 파일을 채우고
-# scripts/skills/supabase-sync.ts 최초 실행 시 competitors 테이블에 upsert한다.
+# 모니터링 대상 경쟁사 (수동 등록)
 #
 # domain: 파워링크 노출 도메인 매칭에 쓰인다(A4 도메인→경쟁사 매핑의 1차 근거).
-# blog_id: 네이버 블로그 URL의 blog.naver.com/<blog_id>에서 추출.
+#         corporate 도메인이 아니라 blog.naver.com처럼 여러 주체가 공유하는 도메인이면
+#         false-positive 매칭이 생기므로 비워둔다(투데이스쿨 참고).
+# blog_id: 네이버 블로그 URL의 blog.naver.com/<blog_id>에서 추출. 없으면 Track B(블로그
+#          SOV·포스팅 주기) 집계에서 제외된다(플레이디딤 참고 — 확인되면 채울 것).
 competitors:
-  - name: "예시경쟁사A"
-    domain: "example-a.com"
-    blog_id: "example_a_blog"
-  - name: "예시경쟁사B"
-    domain: "example-b.co.kr"
-    blog_id: "example_b_blog"
+  - name: "이엔씨아이티"
+    domain: "encit.co.kr"
+    blog_id: "encit"
+  - name: "위즈업"
+    domain: "whizzup.co.kr"
+    blog_id: "whizzup"
+  - name: "뉴로플레이랩"
+    domain: "neuroplay.co.kr"
+    blog_id: "neuroplay"
+  - name: "투데이스쿨"
+    domain: null
+    blog_id: "carasystem"
+  - name: "플레이디딤"
+    domain: "play-didim.com"
+    blog_id: null

@@ -1,5 +1,5 @@
 import { fetchCampaigns, fetchAdgroups, fetchKeywords } from "../lib/naver-searchad-client";
-import { upsertKeywords } from "../lib/supabase-sync";
+import { upsertKeywords, markKeywordsRemoved, fetchEligibleKeywordIds } from "../lib/supabase-sync";
 import { loadExcludedKeywords } from "../lib/config";
 import { writeJson, rawPath, readJson } from "../lib/files";
 import { todayKst, daysBeforeKst } from "../lib/dates";
@@ -29,8 +29,10 @@ export async function syncKeywords(date: string = todayKst()): Promise<SyncResul
   const synced: SyncedKeyword[] = [];
 
   for (const campaign of campaigns) {
+    if (campaign.status !== "ELIGIBLE") continue; // 캠페인이 일시중지/삭제 상태면 그 안의 키워드도 제외
     const adgroups = await fetchAdgroups(campaign.nccCampaignId);
     for (const adgroup of adgroups) {
+      if (adgroup.status !== "ELIGIBLE") continue; // 광고그룹 단위 일시중지도 동일하게 제외
       const keywords = await fetchKeywords(adgroup.nccAdgroupId);
       for (const kw of keywords) {
         if (kw.status !== "ELIGIBLE" || kw.userLock) continue;
@@ -71,6 +73,17 @@ export async function syncKeywords(date: string = todayKst()): Promise<SyncResul
     updated_at: new Date().toISOString(),
   }));
   await upsertKeywords(rows);
+
+  // 오늘 동기화 대상에서 빠진(캠페인/광고그룹 일시중지 등) 키워드는 "활성"으로 남아있지
+  // 않도록 REMOVED로 표시한다 — KPI/대시보드가 status='ELIGIBLE'만 활성으로 집계하므로
+  // 이 정리를 안 하면 더 이상 운영되지 않는 키워드가 계속 카운트된다.
+  // 어제 raw 파일이 아니라 "현재 DB에서 ELIGIBLE인 것" 기준으로 비교한다 — 같은 날 여러 번
+  // 실행하거나 어제 파일이 없어도(최초 실행 등) 정확히 동작하게 하기 위함.
+  const dbEligibleIds = await fetchEligibleKeywordIds();
+  const staleIds = dbEligibleIds.filter((id) => !currentIds.has(id));
+  if (staleIds.length > 0) {
+    await markKeywordsRemoved(staleIds);
+  }
 
   return result;
 }
