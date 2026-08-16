@@ -49,6 +49,7 @@ const ProcessedAdsSchema = z.object({
       avg_cpc: z.number().nullable().optional(),
       competition_level: z.string().nullable().optional(),
       our_rank: z.number().nullable().optional(),
+      spend_7d: z.number().nullable().optional(),
     })
   ),
   spend_estimates: z.array(

@@ -28,6 +28,7 @@ type ProcessedAds = {
     avg_cpc?: number | null;
     competition_level?: string | null;
     our_rank?: number | null;
+    spend_7d?: number | null;
   }[];
   spend_estimates: {
     competitor_name: string;
@@ -81,6 +82,7 @@ async function syncAds(filePath: string) {
       // keyword_daily_metrics.our_rank는 integer 컬럼인데, 검색광고 공식 통계의 avgRnk는
       // 여러 날짜/노출의 평균이라 소수(예: 22.3)로 온다 — 반올림해서 저장한다.
       our_rank: m.our_rank != null ? Math.round(m.our_rank) : null,
+      spend_7d: m.spend_7d ?? null,
     }));
   await upsertKeywordDailyMetrics(metricRows);
 

@@ -7,19 +7,22 @@ export type CpcResult = {
   naver_keyword_id: string;
   keyword: string;
   avg_cpc: number | null; // 최근 7일 실제 집행 지출액/클릭수 — 추정치 아님. 클릭이 없으면 null.
+  spend_7d: number | null; // 최근 7일 실제 집행 지출액 합계(salesAmt) — "핫 비용 TOP10"에 쓰인다.
   skipped?: boolean;
   error?: string;
 };
 
 const CPC_WINDOW_DAYS = 7;
 
-/** A2.6: 전체 등록 키워드(917개 규모)의 실제 평균 CPC.
+/** A2.6: 전체 등록 키워드(917개 규모)의 실제 평균 CPC + 7일 지출액.
  *
- * "우리 순위"(A3)는 비용 절감을 위해 월간검색량 상위 50개만 조회하지만, CPC는 등록된
- * 키워드 전체에 대해 알고 싶다는 요구가 있어 별도 단계로 분리했다. /stats는 id 하나당
- * 호출 1건이 필요해(여러 id를 묶으면 합산 결과만 나옴, 개별 분해 안 됨) 917번의 순차
- * 호출이 필요하지만, 실측(2026-08-17) 결과 건당 ~200ms로 전체 약 3분이면 끝난다.
- * 실제 클릭이 없었던 키워드는 CPC를 계산할 근거가 없으므로 null로 둔다(값을 지어내지 않는다). */
+ * "우리 순위"(A3)는 비용 절감을 위해 월간검색량 상위 50개만 조회하지만, CPC·지출액은
+ * 등록된 키워드 전체에 대해 알고 싶다는 요구가 있어 별도 단계로 분리했다. /stats는 id
+ * 하나당 호출 1건이 필요해(여러 id를 묶으면 합산 결과만 나옴, 개별 분해 안 됨) 917번의
+ * 순차 호출이 필요하지만, 실측(2026-08-17) 결과 건당 ~200ms로 전체 약 3분이면 끝난다.
+ * 실제 클릭이 없었던 키워드는 CPC를 계산할 근거가 없으므로 null로 둔다(값을 지어내지
+ * 않는다) — 다만 지출액(salesAmt)은 클릭 없이도 0으로 실제 집계되므로 spend_7d는 0을
+ * 그대로 저장한다(0도 "실제로 지출이 없었다"는 사실이다). */
 export async function fetchAllKeywordCpc(date: string = todayKst()): Promise<CpcResult[]> {
   const synced = readJson<SyncResult>(rawPath(date, "keywords_synced.json"));
   if (!synced) {
@@ -38,12 +41,18 @@ export async function fetchAllKeywordCpc(date: string = todayKst()): Promise<Cpc
       const totalSales = data.reduce((sum, d) => sum + d.salesAmt, 0);
       const avgCpc = totalClicks > 0 ? Math.round((totalSales / totalClicks) * 100) / 100 : null;
 
-      results.push({ naver_keyword_id: kw.naver_keyword_id, keyword: kw.keyword, avg_cpc: avgCpc });
+      results.push({
+        naver_keyword_id: kw.naver_keyword_id,
+        keyword: kw.keyword,
+        avg_cpc: avgCpc,
+        spend_7d: totalSales,
+      });
     } catch (e) {
       results.push({
         naver_keyword_id: kw.naver_keyword_id,
         keyword: kw.keyword,
         avg_cpc: null,
+        spend_7d: null,
         skipped: true,
         error: (e as Error).message,
       });
