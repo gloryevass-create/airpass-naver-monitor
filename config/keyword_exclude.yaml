@@ -1,0 +1,3 @@
+# (선택) 네이버 검색광고 계정에서 자동 동기화된 키워드 중 모니터링에서 제외할 키워드.
+# naver-keyword-sync 스킬이 이 목록에 있는 키워드를 keywords.is_excluded = true로 표시한다.
+exclude_keywords: []

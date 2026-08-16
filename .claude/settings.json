@@ -1,0 +1,21 @@
+{
+  "hooks": {
+    "PostToolUse": [
+      {
+        "matcher": "Write|Edit",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "jq -r '.tool_input.file_path // .tool_response.filePath // empty' | { read -r f; case \"$f\" in *data/processed/ads_*.json) npx tsx scripts/validate-schema.ts \"$f\" || exit 2 ;; esac; }",
+            "statusMessage": "data/processed/ads_*.json 스키마 검증 중..."
+          },
+          {
+            "type": "command",
+            "command": "jq -r '.tool_input.file_path // .tool_response.filePath // empty' | { read -r f; case \"$f\" in *output/daily/*.md|*output/weekly/*.md|*output/monthly/*.md) npx tsx scripts/brand-tone-check.ts \"$f\" || exit 2 ;; esac; }",
+            "statusMessage": "리포트 브랜드 톤·출처·날짜 형식 검사 중..."
+          }
+        ]
+      }
+    ]
+  }
+}

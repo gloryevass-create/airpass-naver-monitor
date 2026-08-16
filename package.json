@@ -1,0 +1,31 @@
+{
+  "name": "airpass-naver-monitor",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "typecheck": "tsc --noEmit",
+    "sync:keywords": "tsx scripts/skills/naver-keyword-sync.ts",
+    "fetch:searchad": "tsx scripts/skills/naver-searchad-fetch.ts",
+    "scrape:serp": "tsx scripts/skills/naver-serp-scraper.ts",
+    "estimate:spend": "tsx scripts/skills/ad-spend-estimator.ts",
+    "fetch:blog": "tsx scripts/skills/naver-blog-fetch.ts",
+    "analyze:cadence": "tsx scripts/skills/posting-cadence-analyzer.ts",
+    "calculate:sov": "tsx scripts/skills/sov-calculator.ts",
+    "sync:supabase": "tsx scripts/skills/supabase-sync.ts",
+    "run:daily": "bash scripts/run-daily.sh",
+    "validate:schema": "tsx scripts/validate-schema.ts",
+    "check:brand-tone": "tsx scripts/brand-tone-check.ts"
+  },
+  "dependencies": {
+    "@supabase/supabase-js": "^2.112.3",
+    "playwright": "^1.49.0",
+    "yaml": "^2.6.0",
+    "zod": "^3.24.0"
+  },
+  "devDependencies": {
+    "@types/node": "^22",
+    "tsx": "^4.19.0",
+    "typescript": "^5"
+  }
+}

@@ -1,0 +1,13 @@
+# 모니터링 대상 경쟁사 (수동 등록, 5~10곳)
+# 아직 실제 목록을 받지 못해 예시만 남겨둔다 — 실제 값 확인 후 이 파일을 채우고
+# scripts/skills/supabase-sync.ts 최초 실행 시 competitors 테이블에 upsert한다.
+#
+# domain: 파워링크 노출 도메인 매칭에 쓰인다(A4 도메인→경쟁사 매핑의 1차 근거).
+# blog_id: 네이버 블로그 URL의 blog.naver.com/<blog_id>에서 추출.
+competitors:
+  - name: "예시경쟁사A"
+    domain: "example-a.com"
+    blog_id: "example_a_blog"
+  - name: "예시경쟁사B"
+    domain: "example-b.co.kr"
+    blog_id: "example_b_blog"

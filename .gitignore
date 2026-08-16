@@ -1,0 +1,23 @@
+node_modules/
+.env
+.env.*
+!.env.example
+
+# 원본/중간 산출물·생성된 리포트·로컬 상태 — 매일 재생성되고 용량이 커질 수 있어 커밋하지 않음.
+# 감사가 필요하면 로컬에 보관하거나 별도 아카이브로 백업할 것. 최종 데이터는 Supabase가 원본이다.
+data/raw/*
+!data/raw/.gitkeep
+data/processed/*
+!data/processed/.gitkeep
+output/daily/*
+!output/daily/.gitkeep
+output/weekly/*
+!output/weekly/.gitkeep
+output/monthly/*
+!output/monthly/.gitkeep
+output/_pipeline_state.json
+logs/*
+!logs/.gitkeep
+
+*.tsbuildinfo
+.DS_Store
