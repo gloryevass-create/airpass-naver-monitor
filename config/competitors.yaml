@@ -1,4 +1,6 @@
-# 모니터링 대상 경쟁사 (수동 등록)
+# 모니터링 대상 블로그 (수동 등록) — 경쟁사 5곳 + 에어패스 자체 블로그(비교 기준용).
+# "경쟁사" 테이블(Supabase competitors)에 함께 등록되지만, 대시보드 UI에서는 "경쟁사"라는
+# 표현을 쓰지 않고 중립적으로 "블로그"라 부른다(에어패스 자신도 포함되므로).
 #
 # domain: 파워링크 노출 도메인 매칭에 쓰인다(A4 도메인→경쟁사 매핑의 1차 근거).
 #         corporate 도메인이 아니라 blog.naver.com처럼 여러 주체가 공유하는 도메인이면
@@ -21,3 +23,6 @@ competitors:
   - name: "플레이디딤"
     domain: "play-didim.com"
     blog_id: null
+  - name: "에어패스"
+    domain: "airpass.co.kr"
+    blog_id: "airpass-blog"
