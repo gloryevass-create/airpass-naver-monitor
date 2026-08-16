@@ -14,9 +14,9 @@
   검색 오픈API(공식, `openapi.naver.com`). **스크래핑은 전혀 쓰지 않는다** — 아래
   "왜 스크래핑을 안 쓰는가" 참고.
 - **출력**: 공유 Supabase 프로젝트의 `keywords`, `keyword_daily_metrics`, `competitors`,
-  `ad_spend_estimates`, `blog_posts`, `blog_sov_daily`, `posting_cadence`, `pipeline_runs`,
-  `daily_reports`, `alerts` 테이블. 로컬 `data/raw/`(원본 스냅샷)·`data/processed/`(정제본)·
-  `output/`(자연어 리포트 md)도 감사/백업용으로 남긴다.
+  `ad_spend_estimates`, `ad_account_daily_stats`, `blog_posts`, `blog_sov_daily`, `posting_cadence`,
+  `pipeline_runs`, `daily_reports`, `alerts` 테이블. 로컬 `data/raw/`(원본 스냅샷)·
+  `data/processed/`(정제본)·`output/`(자연어 리포트 md)도 감사/백업용으로 남긴다.
 - **역할 분담**: 결정적 단계(API 호출, 계산, DB 쓰기)는 `scripts/`의 TypeScript 코드가 하고,
   판단이 필요한 단계(이상치 서술, 리포트 작성, 콘텐츠 톤 분석)는 이 파일과
   `.claude/agents/*/AGENT.md`를 읽는 Claude 세션이 직접 한다.
@@ -122,6 +122,7 @@ scripts/
 | `keywords` | `naver_keyword_id` |
 | `keyword_daily_metrics` | `date,keyword_id` |
 | `ad_spend_estimates` | `date,competitor_id,keyword_id` |
+| `ad_account_daily_stats` | `date` (bizmoney는 오늘 날짜 행만 별도 upsert — `scripts/lib/supabase-sync.ts`의 주석 참고) |
 | `blog_posts` | `url` |
 | `blog_sov_daily` | `date,keyword_id,competitor_id` |
 | `posting_cadence` | `date,competitor_id` |
@@ -172,6 +173,7 @@ npm run typecheck
 # 개별 스킬 테스트 (전부 data/raw/<오늘>/*.json을 읽고 씀)
 npm run sync:keywords
 npm run fetch:searchad
+npm run fetch:account-stats
 npm run fetch:rank
 npm run fetch:blog
 npm run analyze:cadence

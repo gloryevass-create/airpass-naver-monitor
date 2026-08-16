@@ -8,6 +8,7 @@
     "sync:keywords": "tsx --env-file=.env scripts/skills/naver-keyword-sync.ts",
     "fetch:searchad": "tsx --env-file=.env scripts/skills/naver-searchad-fetch.ts",
     "fetch:rank": "tsx --env-file=.env scripts/skills/naver-rank-tracker.ts",
+    "fetch:account-stats": "tsx --env-file=.env scripts/skills/naver-account-stats-fetch.ts",
     "estimate:spend": "tsx --env-file=.env scripts/skills/ad-spend-estimator.ts",
     "fetch:blog": "tsx --env-file=.env scripts/skills/naver-blog-fetch.ts",
     "analyze:cadence": "tsx --env-file=.env scripts/skills/posting-cadence-analyzer.ts",

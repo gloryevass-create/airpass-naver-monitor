@@ -8,6 +8,8 @@ import {
   fetchKeywordIdMap,
   upsertKeywordDailyMetrics,
   upsertAdSpendEstimates,
+  upsertAdAccountDailyStats,
+  upsertAdAccountBizmoney,
   upsertBlogPosts,
   upsertBlogSovDaily,
   upsertPostingCadence,
@@ -33,6 +35,18 @@ type ProcessedAds = {
     estimated_monthly_spend: number;
     calc_basis: Record<string, unknown>;
   }[];
+  account_stats?: {
+    trend: {
+      date: string;
+      imp_cnt: number;
+      clk_cnt: number;
+      ccnt: number;
+      sales_amt: number;
+      ctr: number;
+      cpc: number;
+    }[];
+    bizmoney: number | null;
+  };
   alerts?: { severity: "info" | "warning" | "critical"; category: string; message: string; evidence_ref: string }[];
   report?: { report_type: "daily" | "weekly" | "monthly"; title: string; content_md: string; source_refs: string[] };
 };
@@ -80,6 +94,22 @@ async function syncAds(filePath: string) {
       calc_basis: s.calc_basis as Json,
     }));
   await upsertAdSpendEstimates(spendRows);
+
+  if (data.account_stats) {
+    const statRows = data.account_stats.trend.map((t) => ({
+      date: t.date,
+      imp_cnt: t.imp_cnt,
+      clk_cnt: t.clk_cnt,
+      ccnt: t.ccnt,
+      sales_amt: t.sales_amt,
+      ctr: t.ctr,
+      cpc: t.cpc,
+    }));
+    await upsertAdAccountDailyStats(statRows);
+    if (data.account_stats.bizmoney != null) {
+      await upsertAdAccountBizmoney(data.date, data.account_stats.bizmoney);
+    }
+  }
 
   if (data.alerts?.length) {
     await insertAlerts(data.alerts.map((a) => ({ date: data.date, ...a })));

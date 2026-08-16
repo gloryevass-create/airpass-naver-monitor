@@ -59,6 +59,22 @@ const ProcessedAdsSchema = z.object({
       calc_basis: CalcBasis,
     })
   ),
+  account_stats: z
+    .object({
+      trend: z.array(
+        z.object({
+          date: z.string().regex(/^\d{4}-\d{2}-\d{2}$/),
+          imp_cnt: z.number().nonnegative(),
+          clk_cnt: z.number().nonnegative(),
+          ccnt: z.number().nonnegative(),
+          sales_amt: z.number().nonnegative(),
+          ctr: z.number(),
+          cpc: z.number(),
+        })
+      ),
+      bizmoney: z.number().nullable(),
+    })
+    .optional(),
   alerts: z.array(AlertSchema).optional().default([]),
   report: ReportSchema.optional(),
 });

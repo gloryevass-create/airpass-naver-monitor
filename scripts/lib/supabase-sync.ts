@@ -77,6 +77,29 @@ export async function upsertKeywordDailyMetrics(rows: Tables["keyword_daily_metr
   if (error) throw new Error(`keyword_daily_metrics upsert 실패: ${error.message}`);
 }
 
+/** bizmoney는 별도 upsert(아래 upsertAdAccountBizmoney)로 채운다 — 이 함수의 payload에
+ * bizmoney 키를 아예 넣지 않아야, 매일 밀려나는 7일 추이 윈도우가 예전 날짜를 다시 담을 때
+ * 이미 저장된 그 날짜의 비즈머니 스냅샷이 null로 덮어써지지 않는다(PostgREST upsert는
+ * payload에 없는 컬럼은 ON CONFLICT UPDATE SET 절에도 포함하지 않는다). */
+export async function upsertAdAccountDailyStats(
+  rows: Omit<Tables["ad_account_daily_stats"]["Insert"], "bizmoney">[]
+) {
+  if (rows.length === 0) return;
+  const { error } = await getSupabaseClient()
+    .from("ad_account_daily_stats")
+    .upsert(rows, { onConflict: "date" });
+  if (error) throw new Error(`ad_account_daily_stats upsert 실패: ${error.message}`);
+}
+
+/** 그날(오늘) 수집한 비즈머니 잔액 스냅샷만 별도로 채운다 — 위 함수와 분리된 이유는
+ * upsertAdAccountDailyStats의 주석 참고. */
+export async function upsertAdAccountBizmoney(date: string, bizmoney: number) {
+  const { error } = await getSupabaseClient()
+    .from("ad_account_daily_stats")
+    .upsert({ date, bizmoney }, { onConflict: "date" });
+  if (error) throw new Error(`ad_account_daily_stats(bizmoney) upsert 실패: ${error.message}`);
+}
+
 export async function upsertAdSpendEstimates(rows: Tables["ad_spend_estimates"]["Insert"][]) {
   if (rows.length === 0) return;
   const { error } = await getSupabaseClient()

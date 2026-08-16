@@ -15,6 +15,11 @@ Track A(네이버 키워드 광고 모니터링)를 A0부터 A8까지 순서대�
    실패하면 여기서 중단하고 `pipeline_runs`(ad, failed)를 기록한 뒤 사람에게 보고한다 — 이후
    모든 단계가 이 결과에 의존한다.
 2. **A2 — 검색광고 통계** (`naver-searchad-fetch` 스킬): `npx tsx scripts/skills/naver-searchad-fetch.ts`
+2-5. **A2.5 — 계정 전체 성과지표 + 비즈머니 잔액** (`naver-account-stats-fetch` 스킬):
+   `npx tsx scripts/skills/naver-account-stats-fetch.ts` — 캠페인 ID를 모두 묶어 `/stats`를
+   호출하면 계정 전체 합산 일별 노출수/클릭수/전환수/지출액이 나온다(경쟁사 추정이 아니라
+   우리 자신의 실제 집행 데이터라 calc_basis 없이 그대로 쓴다). `/billing/bizmoney`로 비즈머니
+   잔액도 함께 스냅샷한다. 대시보드 "네이버 키워드" 페이지 상단의 광고 성과지표 패널에 쓰인다.
 3. **A3 — 우리 순위** (`naver-rank-tracker` 스킬, 검색광고 공식 통계 API): `npx tsx scripts/skills/naver-rank-tracker.ts`
 4. **A4/A5 — 경쟁사 광고비 추정** (`ad-spend-estimator` 스킬): `npx tsx scripts/skills/ad-spend-estimator.ts`
    실행하지만 **항상 빈 결과**를 반환한다 — 경쟁사 파워링크 노출 데이터는 공식 API도 스크래핑도
@@ -35,7 +40,8 @@ Track A(네이버 키워드 광고 모니터링)를 A0부터 A8까지 순서대�
    안 된다. `our_rank`는 `rank_snapshot.json`에 있는 키워드만 채우고, 나머지는 `null`로 둔다
    (⚠️ 시범 실행 중 이 둘을 혼동해 `rank_snapshot.json` 50개만 반영한 적이 있었다 — 그러면
    대시보드의 "키워드별 상세" 표와 "콘텐츠 매칭 키워드" 표가 전체 917개가 아니라 50개
-   중에서만 계산돼 데이터가 실제보다 훨씬 적게 나온다). A6/A7 결과(alerts, report)까지
+   중에서만 계산돼 데이터가 실제보다 훨씬 적게 나온다). A2.5 결과(`data/raw/<날짜>/account_stats.json`)를
+   `account_stats` 필드(`{ trend: [...], bizmoney }`)로 포함하고, A6/A7 결과(alerts, report)까지
    포함해 저장(스키마 검증 훅 자동 실행) → 통과하면
    `npx tsx scripts/skills/supabase-sync.ts data/processed/ads_<날짜>.json` 실행.
 

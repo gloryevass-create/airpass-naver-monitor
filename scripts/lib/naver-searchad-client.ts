@@ -111,3 +111,39 @@ export async function fetchKeywordStatReport(keywordId: string, since: string, u
   });
 }
 
+export type AccountStatDay = {
+  dateStart: string;
+  dateEnd: string;
+  impCnt: number;
+  clkCnt: number;
+  ccnt: number;
+  ctr: number;
+  cpc: number;
+  salesAmt: number;
+};
+
+/** 계정 전체(모든 캠페인 합산) 일별 성과지표. /stats에 캠페인 ID를 콤마로 여러 개 묶어
+ * 넘기면 그 ID들을 합산한 일별 데이터가 그대로 나온다(실측 확인 완료, 2026-08-17). */
+export async function fetchAccountStats(campaignIds: string[], since: string, until: string) {
+  if (campaignIds.length === 0) return { data: [] as AccountStatDay[] };
+  return searchAdRequest<{ data: AccountStatDay[] }>("GET", "/stats", {
+    query: {
+      id: campaignIds.join(","),
+      fields: JSON.stringify(["impCnt", "clkCnt", "ccnt", "ctr", "cpc", "salesAmt"]),
+      timeRange: JSON.stringify({ since, until }),
+    },
+  });
+}
+
+export type BizmoneyBalance = {
+  customerId: number;
+  bizmoney: number;
+  budgetLock: boolean;
+  refundLock: boolean;
+};
+
+/** 비즈머니(선불 광고비) 잔액 조회 — 공식 API, 실측 확인 완료(2026-08-17). */
+export async function fetchBizmoney() {
+  return searchAdRequest<BizmoneyBalance>("GET", "/billing/bizmoney");
+}
+
