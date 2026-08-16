@@ -94,10 +94,13 @@ npm run run:daily   # = bash scripts/run-daily.sh
 
 ## API 호출 대상 범위
 
-실 계정 기준 활성 키워드가 900개를 넘어, 키워드별로 별도 호출이 필요한 A3(우리 순위)·
-B2/B3(블로그)는 전체가 아니라 **월간검색량 상위 50개**만 대상으로 합니다(검색량·경쟁정도는
-공식 API라 전체 키워드를 매일 수집합니다). 이 개수를 바꾸려면 `scripts/lib/keyword-scope.ts`의
-`SCRAPE_TARGET_COUNT`를 수정하세요.
+실 계정 기준 활성 키워드가 900개를 넘어, 키워드별로 별도 호출이 필요한 단계는 전체가
+아니라 일부만 대상으로 합니다(검색량·경쟁정도는 공식 API라 전체 키워드를 매일 수집합니다):
+
+- **A3(우리 순위)**: 월간검색량 상위 50개(`scripts/lib/keyword-scope.ts`의 `SCRAPE_TARGET_COUNT`)
+- **B2(블로그 SOV 검색어)**: 실제 경쟁사 게시물 제목과 겹치는 키워드 최대 30개
+  (`scripts/lib/blog-keyword-scope.ts`의 `BLOG_KEYWORD_COUNT`) — 검색량이 아니라 콘텐츠
+  주제 기준이라 A3와 대상이 다릅니다.
 
 ## 운영상 주의
 
