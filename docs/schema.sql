@@ -1,11 +1,9 @@
 -- ============================================================================
--- 에어패스 네이버 마케팅 모니터링 — 스키마 참조 사본 (읽기 전용)
+-- 에어패스 네이버 마케팅 모니터링 — 초기 스키마
 --
--- 스키마의 단일 출처는 airpass-naver-dashboard 저장소의
--- supabase/migrations/0001_init.sql이다. 이 파일은 그 내용을 그대로 복사해
--- 이 에이전트가 upsert하는 테이블 구조를 코드 리뷰 시점에 참조하기 위한
--- 사본일 뿐이며, 실제 마이그레이션 실행 주체는 airpass-naver-dashboard다.
--- 스키마를 바꿀 일이 있으면 그 저장소에서 먼저 바꾸고 이 파일을 다시 복사한다.
+-- 이 파일이 스키마의 단일 출처(source of truth)다.
+-- 프로젝트 2(모니터링 에이전트)는 이 구조를 그대로 참조해 upsert하며,
+-- 스키마를 변경할 때는 이 파일(과 필요하면 후속 0002_*.sql)만 수정한다.
 -- ============================================================================
 
 create extension if not exists "pgcrypto";
@@ -197,3 +195,13 @@ begin
     );
   end loop;
 end $$;
+-- ============================================================================
+-- 키워드 평균 월간 클릭수(PC/모바일) 컬럼 추가
+--
+-- 네이버 검색광고 키워드도구 API(showDetail=1)가 이미 반환하는 값인데
+-- (monthlyAvePcClkCnt, monthlyAveMobileClkCnt) 지금까지 저장하지 않고 있었다.
+-- ============================================================================
+
+alter table public.keyword_daily_metrics
+  add column if not exists monthly_click_pc numeric(10, 2),
+  add column if not exists monthly_click_mobile numeric(10, 2);

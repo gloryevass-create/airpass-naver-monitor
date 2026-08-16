@@ -21,6 +21,8 @@ type ProcessedAds = {
     naver_keyword_id: string;
     monthly_search_pc?: number | null;
     monthly_search_mobile?: number | null;
+    monthly_click_pc?: number | null;
+    monthly_click_mobile?: number | null;
     avg_cpc?: number | null;
     competition_level?: string | null;
     our_rank?: number | null;
@@ -58,6 +60,8 @@ async function syncAds(filePath: string) {
       keyword_id: keywordMap.get(m.naver_keyword_id)!,
       monthly_search_pc: m.monthly_search_pc ?? null,
       monthly_search_mobile: m.monthly_search_mobile ?? null,
+      monthly_click_pc: m.monthly_click_pc ?? null,
+      monthly_click_mobile: m.monthly_click_mobile ?? null,
       avg_cpc: m.avg_cpc ?? null,
       competition_level: m.competition_level ?? null,
       // keyword_daily_metrics.our_rank는 integer 컬럼인데, 검색광고 공식 통계의 avgRnk는

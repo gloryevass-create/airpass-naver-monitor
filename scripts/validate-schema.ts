@@ -44,6 +44,8 @@ const ProcessedAdsSchema = z.object({
       naver_keyword_id: z.string().min(1),
       monthly_search_pc: z.number().nullable().optional(),
       monthly_search_mobile: z.number().nullable().optional(),
+      monthly_click_pc: z.number().nullable().optional(),
+      monthly_click_mobile: z.number().nullable().optional(),
       avg_cpc: z.number().nullable().optional(),
       competition_level: z.string().nullable().optional(),
       our_rank: z.number().nullable().optional(),

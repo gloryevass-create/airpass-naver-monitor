@@ -8,10 +8,20 @@ export type KeywordStat = {
   keyword: string;
   monthly_search_pc: number | null;
   monthly_search_mobile: number | null;
+  monthly_click_pc: number | null;
+  monthly_click_mobile: number | null;
   competition_level: string | null;
 };
 
-/** A2: 예상입찰가·월간검색수·경쟁정도. 순위(our_rank)는 A3(SERP 스크래핑)에서 채운다. */
+type RawStat = Omit<KeywordStat, "naver_keyword_id" | "keyword">;
+
+function toNumberOrNull(value: number | string | undefined): number | null {
+  if (value == null) return null;
+  const n = typeof value === "number" ? value : Number(value);
+  return Number.isFinite(n) ? n : null;
+}
+
+/** A2: 예상입찰가·월간검색수·월간클릭수·경쟁정도. 순위(our_rank)는 A3(공식 통계 API)에서 채운다. */
 export async function fetchSearchAdStats(date: string = todayKst()): Promise<KeywordStat[]> {
   const synced = readJson<SyncResult>(rawPath(date, "keywords_synced.json"));
   if (!synced) {
@@ -27,10 +37,7 @@ export async function fetchSearchAdStats(date: string = todayKst()): Promise<Key
   // 연관어로 같이 옴), 배치별로 바로 push하면 같은 키워드가 여러 번 중복 수집된다.
   // 그래서 먼저 키워드 텍스트 → 통계 Map으로 모으고(중복은 자연히 1건으로 합쳐짐),
   // 그다음 우리가 실제로 동기화한 키워드 목록을 기준으로 딱 1건씩만 뽑는다.
-  const statByText = new Map<
-    string,
-    { monthly_search_pc: number | null; monthly_search_mobile: number | null; competition_level: string | null }
-  >();
+  const statByText = new Map<string, RawStat>();
 
   // 키워드도구 API는 한 번에 여러 키워드를 받을 수 있으나 계정 제한에 따라 배치 처리.
   const BATCH_SIZE = 5;
@@ -40,12 +47,10 @@ export async function fetchSearchAdStats(date: string = todayKst()): Promise<Key
     for (const item of res.keywordList) {
       if (statByText.has(item.relKeyword)) continue; // 이미 채워진 텍스트면 덮어쓰지 않음(첫 응답 신뢰)
       statByText.set(item.relKeyword, {
-        monthly_search_pc:
-          typeof item.monthlyPcQcCnt === "number" ? item.monthlyPcQcCnt : Number(item.monthlyPcQcCnt) || null,
-        monthly_search_mobile:
-          typeof item.monthlyMobileQcCnt === "number"
-            ? item.monthlyMobileQcCnt
-            : Number(item.monthlyMobileQcCnt) || null,
+        monthly_search_pc: toNumberOrNull(item.monthlyPcQcCnt),
+        monthly_search_mobile: toNumberOrNull(item.monthlyMobileQcCnt),
+        monthly_click_pc: toNumberOrNull(item.monthlyAvePcClkCnt),
+        monthly_click_mobile: toNumberOrNull(item.monthlyAveMobileClkCnt),
         competition_level: item.compIdx ?? null,
       });
     }

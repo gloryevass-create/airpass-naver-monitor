@@ -74,6 +74,8 @@ export type KeywordToolStat = {
   monthlyPcQcCnt: number | string;
   monthlyMobileQcCnt: number | string;
   compIdx: string; // 경쟁정도: 낮음/중간/높음
+  monthlyAvePcClkCnt?: number | string;
+  monthlyAveMobileClkCnt?: number | string;
 };
 
 /** 월간검색수·경쟁정도 조회 (키워드도구 API). */

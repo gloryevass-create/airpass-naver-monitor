@@ -29,8 +29,14 @@ Track A(네이버 키워드 광고 모니터링)를 A0부터 A8까지 순서대�
 6. **A7 — 일간 리포트 (LLM)**: 오늘 수집된 수치를 요약하는 자연어 리포트를 작성한다. 모든 주장에
    "출처:"/"근거:" 각주를 단다. 경쟁사 광고비는 데이터가 없다는 사실을 명시하고 추정치를 지어내지
    않는다. `report-formatter` 스킬 규칙대로 파일명을 정한다(`output/daily/<날짜>_daily_ad.md`).
-7. **A8 — Supabase 반영** (`supabase-sync` 스킬): A6/A7 결과를 포함한 구조화 JSON을
-   `data/processed/ads_<날짜>.json`으로 저장(스키마 검증 훅 자동 실행) → 통과하면
+7. **A8 — Supabase 반영** (`supabase-sync` 스킬): `data/processed/ads_<날짜>.json`의 `metrics`
+   배열은 **`data/raw/<날짜>/searchad_stats.json`에 있는 전체 키워드**(917개 규모, A2 결과)를
+   빠짐없이 담아야 한다 — `rank_snapshot.json`(A3, 월간검색량 상위 50개만)의 키워드만 담으면
+   안 된다. `our_rank`는 `rank_snapshot.json`에 있는 키워드만 채우고, 나머지는 `null`로 둔다
+   (⚠️ 시범 실행 중 이 둘을 혼동해 `rank_snapshot.json` 50개만 반영한 적이 있었다 — 그러면
+   대시보드의 "키워드별 상세" 표와 "콘텐츠 매칭 키워드" 표가 전체 917개가 아니라 50개
+   중에서만 계산돼 데이터가 실제보다 훨씬 적게 나온다). A6/A7 결과(alerts, report)까지
+   포함해 저장(스키마 검증 훅 자동 실행) → 통과하면
    `npx tsx scripts/skills/supabase-sync.ts data/processed/ads_<날짜>.json` 실행.
 
 ## 완료 기준
