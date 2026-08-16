@@ -25,4 +25,10 @@ export const env = {
   get airpassDomain() {
     return required("AIRPASS_DOMAIN");
   },
+  get naverOpenApiClientId() {
+    return required("NAVER_OPENAPI_CLIENT_ID");
+  },
+  get naverOpenApiClientSecret() {
+    return required("NAVER_OPENAPI_CLIENT_SECRET");
+  },
 };

@@ -1,9 +1,7 @@
-import { chromium } from "playwright";
 import { writeJson, rawPath } from "../lib/files";
 import { todayKst } from "../lib/dates";
-import { isAllowedByRobots, politeDelay } from "../lib/scrape-utils";
-import { withRetry } from "../lib/retry";
 import { loadCompetitors } from "../lib/config";
+import { searchBlog, type BlogSearchItem } from "../lib/naver-openapi-client";
 import { getOrComputeScrapeTargets, SCRAPE_TARGET_COUNT } from "../lib/keyword-scope";
 
 const TOP_N = 10;
@@ -25,139 +23,89 @@ export type BlogPost = {
 };
 
 function extractBlogIdFromUrl(url: string): string | null {
-  // blog.naver.com/<blogId>/<logNo> 형태
-  const m = url.match(/blog\.naver\.com\/([^/?]+)/);
-  return m ? m[1] : null;
+  // blog.naver.com/<blogId>/<logNo> 또는 PostView.naver?blogId=... 형태 모두 대응
+  const pathMatch = url.match(/blog\.naver\.com\/([^/?]+)/);
+  if (pathMatch) return pathMatch[1];
+  const queryMatch = url.match(/[?&]blogId=([^&]+)/);
+  return queryMatch ? decodeURIComponent(queryMatch[1]) : null;
 }
 
-/** B2: 키워드별 블로그 검색결과 상위 N개의 블로거 ID 수집(SOV 계산의 원천 데이터).
- * 네이버 공식 블로그 검색 오픈API가 있지만 그 결과 정렬은 실제 이용자가 보는
- * 검색결과 화면과 다를 수 있어(A3와 동일한 이유로) 이 프로젝트는 실제 검색결과
- * 페이지를 스크래핑한다 — 한계는 scripts/lib/scrape-utils.ts 상단 주석 참고.
+function toIsoDate(postdate: string): string | null {
+  // postdate: YYYYMMDD
+  if (!/^\d{8}$/.test(postdate)) return null;
+  return `${postdate.slice(0, 4)}-${postdate.slice(4, 6)}-${postdate.slice(6, 8)}`;
+}
+
+/**
+ * B2+B3: 키워드별 블로그 검색결과 상위 N개(SOV용)와, 그중 등록된 경쟁사 블로그에
+ * 해당하는 게시물의 발행일(포스팅 주기용)을 네이버 공식 블로그 검색 오픈API로
+ * 한 번에 수집한다.
  *
- * A3와 같은 이유로 계정 전체 키워드가 아니라 월간검색량 상위 SCRAPE_TARGET_COUNT
- * (기본 50)개만 대상으로 한다(사용자 확인 완료). blog-monitor가 ad-monitor 없이
- * 단독 실행되어도 getOrComputeScrapeTargets가 필요한 raw 데이터를 알아서 만든다. */
-export async function fetchBlogSerp(date: string = todayKst()): Promise<BlogSerpResult[]> {
+ * search.naver.com 스크래핑은 robots.txt가 전면 금지해 포기했다(사용자 확인
+ * 완료, CLAUDE.md의 "왜 스크래핑을 안 쓰는가" 절 참고). 대신 공식 오픈API를 쓰되,
+ * 이 API는 "이 블로거의 전체 글 목록"을 조회하는 기능이 없어 B3(포스팅 주기)의
+ * 범위가 "우리가 모니터링하는 키워드와 관련된 게시물"로 좁혀진다 — 경쟁사 전체
+ * 블로그 활동이 아니라 우리 키워드 주변의 활동량이라는 뜻이다(사용자 확인 완료).
+ */
+export async function fetchBlogData(
+  date: string = todayKst()
+): Promise<{ serp: BlogSerpResult[]; posts: BlogPost[] }> {
   const targets = await getOrComputeScrapeTargets(date);
-
-  const searchUrl = "https://search.naver.com/search.naver";
-  const allowed = await isAllowedByRobots(`${searchUrl}?where=blog`);
-  if (!allowed) {
-    console.warn("[naver-blog-fetch] robots.txt disallow — 블로그 SERP 수집 전체 스킵");
-    const skipped = targets.map((k) => ({
-      naver_keyword_id: k.naver_keyword_id,
-      keyword: k.keyword,
-      topBlogIds: [],
-      skipped: true,
-      error: "robots.txt disallow",
-    }));
-    writeJson(rawPath(date, "blog_serp_snapshot.json"), skipped);
-    return skipped;
-  }
-
-  const browser = await chromium.launch({ headless: true });
-  const results: BlogSerpResult[] = [];
-
-  try {
-    const page = await browser.newPage({
-      userAgent:
-        "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0 Safari/537.36",
-    });
-
-    for (const kw of targets) {
-      await politeDelay();
-      try {
-        const result = await withRetry(
-          async () => {
-            await page.goto(
-              `${searchUrl}?where=blog&query=${encodeURIComponent(kw.keyword)}`,
-              { waitUntil: "domcontentloaded", timeout: 15000 }
-            );
-
-            const links = await page
-              .locator(".title_link, .api_txt_lines.total_tit")
-              .evaluateAll((els) => els.map((el) => (el as HTMLAnchorElement).href).filter(Boolean));
-
-            const blogIds = links
-              .map(extractBlogIdFromUrl)
-              .filter((id): id is string => Boolean(id))
-              .slice(0, TOP_N);
-
-            return {
-              naver_keyword_id: kw.naver_keyword_id,
-              keyword: kw.keyword,
-              topBlogIds: blogIds,
-            };
-          },
-          { attempts: 3, baseDelayMs: 2000 }
-        );
-        results.push(result);
-      } catch (e) {
-        results.push({
-          naver_keyword_id: kw.naver_keyword_id,
-          keyword: kw.keyword,
-          topBlogIds: [],
-          skipped: true,
-          error: (e as Error).message,
-        });
-      }
-    }
-  } finally {
-    await browser.close();
-  }
-
-  writeJson(rawPath(date, "blog_serp_snapshot.json"), results);
-  return results;
-}
-
-/** B3: 경쟁사 블로그 게시물 목록·발행일. 네이버 블로그는 RSS 피드
- * (rss.blog.naver.com/<blogId>.xml)를 공식적으로 제공하므로 검색결과 스크래핑이
- * 아니라 이 피드를 우선 사용한다 — 더 안정적이고 예의 문제에서도 자유롭다. */
-export async function fetchCompetitorBlogPosts(date: string = todayKst()): Promise<BlogPost[]> {
   const competitors = loadCompetitors();
-  const posts: BlogPost[] = [];
+  const blogIdToName = new Map(
+    competitors.filter((c) => c.blog_id).map((c) => [c.blog_id as string, c.name])
+  );
 
-  for (const competitor of competitors) {
-    if (!competitor.blog_id) continue;
-    await politeDelay();
+  const serp: BlogSerpResult[] = [];
+  const postsByUrl = new Map<string, BlogPost>();
+
+  for (const kw of targets) {
     try {
-      const res = await withRetry(async () => {
-        const r = await fetch(`https://rss.blog.naver.com/${competitor.blog_id}.xml`);
-        if (!r.ok) throw new Error(`RSS 요청 실패 (${r.status})`);
-        return r.text();
-      });
+      const items: BlogSearchItem[] = await searchBlog(kw.keyword, TOP_N);
+      const blogIds = items
+        .map((item) => extractBlogIdFromUrl(item.bloggerlink || item.link))
+        .filter((id): id is string => Boolean(id));
 
-      const items = [...res.matchAll(/<item>([\s\S]*?)<\/item>/g)];
-      for (const [, itemXml] of items) {
-        const title = itemXml.match(/<title>([\s\S]*?)<\/title>/)?.[1]?.trim() ?? null;
-        const link = itemXml.match(/<link>([\s\S]*?)<\/link>/)?.[1]?.trim() ?? "";
-        const pubDate = itemXml.match(/<pubDate>([\s\S]*?)<\/pubDate>/)?.[1]?.trim();
-        const publishedAt = pubDate ? new Date(pubDate).toISOString().slice(0, 10) : null;
+      serp.push({ naver_keyword_id: kw.naver_keyword_id, keyword: kw.keyword, topBlogIds: blogIds });
 
-        if (!link) continue;
-        posts.push({
-          competitor_name: competitor.name,
-          blog_id: competitor.blog_id,
-          url: link,
-          title,
-          published_at: publishedAt,
-        });
+      for (let i = 0; i < items.length; i++) {
+        const blogId = blogIds[i];
+        const competitorName = blogId ? blogIdToName.get(blogId) : undefined;
+        if (!competitorName) continue; // 등록된 경쟁사가 아니면 게시물 목록에 넣지 않음
+
+        const item = items[i];
+        if (!postsByUrl.has(item.link)) {
+          postsByUrl.set(item.link, {
+            competitor_name: competitorName,
+            blog_id: blogId!,
+            url: item.link,
+            title: item.title.replace(/<\/?b>/g, ""),
+            published_at: toIsoDate(item.postdate),
+          });
+        }
       }
     } catch (e) {
-      console.warn(`[naver-blog-fetch] ${competitor.name} RSS 수집 실패, 스킵: ${(e as Error).message}`);
+      serp.push({
+        naver_keyword_id: kw.naver_keyword_id,
+        keyword: kw.keyword,
+        topBlogIds: [],
+        skipped: true,
+        error: (e as Error).message,
+      });
     }
   }
 
+  const posts = [...postsByUrl.values()];
+  writeJson(rawPath(date, "blog_serp_snapshot.json"), serp);
   writeJson(rawPath(date, "blog_posts.json"), posts);
-  return posts;
+  return { serp, posts };
 }
 
 if (import.meta.url === `file://${process.argv[1]}`) {
-  Promise.all([fetchBlogSerp(), fetchCompetitorBlogPosts()])
-    .then(([serp, posts]) =>
+  fetchBlogData()
+    .then(({ serp, posts }) =>
       console.log(
-        `[naver-blog-fetch] 월간검색량 상위 ${SCRAPE_TARGET_COUNT}개 중 SERP ${serp.length}개 키워드, 게시물 ${posts.length}건 수집 완료`
+        `[naver-blog-fetch] 월간검색량 상위 ${SCRAPE_TARGET_COUNT}개 중 SERP ${serp.length}개 키워드, 경쟁사 게시물 ${posts.length}건 수집 완료`
       )
     )
     .catch((e) => {

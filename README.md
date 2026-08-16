@@ -12,9 +12,12 @@
    `service_role` 키 (⚠️ 이 키는 RLS를 우회하므로 절대 공개 저장소에 커밋하지 마세요)
 2. **네이버 검색광고 API**: `CUSTOMER_ID`, `API_KEY`, `SECRET_KEY`
    ([searchad.naver.com](https://searchad.naver.com) → 광고시스템 → 도구 → API 관리에서 발급)
-3. **에어패스 자체 도메인** (`AIRPASS_DOMAIN`): 파워링크 검색결과에서 "우리 순위"를 식별하는 데 씀
-4. **경쟁사 목록** 5~10곳: 이름, 도메인, 네이버 블로그 ID → `config/competitors.yaml`에 등록
-5. (선택) 제외할 키워드 → `config/keyword_exclude.yaml`
+3. **네이버 오픈API**: `Client ID`, `Client Secret`
+   ([developers.naver.com/apps](https://developers.naver.com/apps) → 애플리케이션 등록, 검색광고 API와
+   별개의 키. 블로그 검색 API 사용 권한을 켜야 함) — B2/B3(블로그 검색결과·경쟁사 게시물)에 사용
+4. **에어패스 자체 도메인** (`AIRPASS_DOMAIN`): 참고용(현재 코드에서 직접 쓰이진 않음)
+5. **경쟁사 목록** 5~10곳: 이름, 도메인, 네이버 블로그 ID → `config/competitors.yaml`에 등록
+6. (선택) 제외할 키워드 → `config/keyword_exclude.yaml`
 
 ## 로컬 설정
 
@@ -23,7 +26,6 @@ cp .env.example .env
 # .env를 열어 위 값들을 채운다
 
 npm install
-npx playwright install chromium   # 최초 1회 — 스크래핑에 쓰는 Chromium 바이너리 설치
 npm run typecheck
 ```
 
@@ -36,9 +38,9 @@ npm run typecheck
 ```bash
 npm run sync:keywords     # A0/A1 — 키워드 동기화
 npm run fetch:searchad    # A2 — 검색량·경쟁정도
-npm run scrape:serp       # A3 — 파워링크 노출순서·도메인
-npm run estimate:spend    # A4/A5 — 도메인 매핑·광고비 추정
-npm run fetch:blog        # B2/B3 — 블로그 검색결과·게시물
+npm run fetch:rank        # A3 — 우리 순위(공식 통계 API)
+npm run estimate:spend    # A4/A5 — 경쟁사 광고비(항상 빈 결과 — 자동 수집 불가, CLAUDE.md 참고)
+npm run fetch:blog        # B2/B3 — 블로그 검색결과·경쟁사 게시물(공식 블로그 검색 API)
 npm run analyze:cadence   # B4 — 포스팅 주기
 npm run calculate:sov     # B5 — SOV
 ```
@@ -90,12 +92,12 @@ npm run run:daily   # = bash scripts/run-daily.sh
 
 등록: `launchctl load ~/Library/LaunchAgents/com.airpass.naver-monitor.plist`
 
-## 스크래핑 대상 범위
+## API 호출 대상 범위
 
-실 계정 기준 활성 키워드가 900개를 넘어, 파워링크·블로그 검색결과 스크래핑(A3/B2)은 전체가
-아니라 **월간검색량 상위 50개**만 대상으로 합니다(검색량·경쟁정도는 공식 API라 전체 키워드를
-매일 수집합니다). 이 개수를 바꾸려면 `scripts/lib/keyword-scope.ts`의 `SCRAPE_TARGET_COUNT`를
-수정하세요.
+실 계정 기준 활성 키워드가 900개를 넘어, 키워드별로 별도 호출이 필요한 A3(우리 순위)·
+B2/B3(블로그)는 전체가 아니라 **월간검색량 상위 50개**만 대상으로 합니다(검색량·경쟁정도는
+공식 API라 전체 키워드를 매일 수집합니다). 이 개수를 바꾸려면 `scripts/lib/keyword-scope.ts`의
+`SCRAPE_TARGET_COUNT`를 수정하세요.
 
 ## 운영상 주의
 
@@ -106,5 +108,5 @@ npm run run:daily   # = bash scripts/run-daily.sh
   비용 상한을 둡니다.
 - `data/raw/`, `data/processed/`, `output/*/`는 git에 커밋하지 않습니다(매일 재생성되는 산출물).
   감사가 필요하면 별도로 백업하세요.
-- 파워링크/블로그 검색결과 스크래핑의 한계와 책임 범위는
-  [`scripts/lib/scrape-utils.ts`](./scripts/lib/scrape-utils.ts) 상단 주석을 참고하세요.
+- 이 프로젝트는 스크래핑을 쓰지 않습니다(전부 공식 API) — 그 배경과 "경쟁사 광고비 자동 수집이
+  안 되는 이유"는 [`CLAUDE.md`](./CLAUDE.md)의 "왜 스크래핑을 안 쓰는가" 절을 참고하세요.

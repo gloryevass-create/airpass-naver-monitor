@@ -7,7 +7,7 @@
     "typecheck": "tsc --noEmit",
     "sync:keywords": "tsx --env-file=.env scripts/skills/naver-keyword-sync.ts",
     "fetch:searchad": "tsx --env-file=.env scripts/skills/naver-searchad-fetch.ts",
-    "scrape:serp": "tsx --env-file=.env scripts/skills/naver-serp-scraper.ts",
+    "fetch:rank": "tsx --env-file=.env scripts/skills/naver-rank-tracker.ts",
     "estimate:spend": "tsx --env-file=.env scripts/skills/ad-spend-estimator.ts",
     "fetch:blog": "tsx --env-file=.env scripts/skills/naver-blog-fetch.ts",
     "analyze:cadence": "tsx --env-file=.env scripts/skills/posting-cadence-analyzer.ts",
@@ -19,7 +19,6 @@
   },
   "dependencies": {
     "@supabase/supabase-js": "^2.112.3",
-    "playwright": "^1.49.0",
     "yaml": "^2.6.0",
     "zod": "^3.24.0"
   },

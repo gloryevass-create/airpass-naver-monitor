@@ -83,21 +83,29 @@ export async function fetchKeywordStats(keywords: string[]) {
   });
 }
 
-export type EstimateBid = { bid: number; expCpc?: number };
+export type StatDay = {
+  dateStart: string;
+  dateEnd: string;
+  impCnt: number;
+  clkCnt: number;
+  ctr: number;
+  cpc: number;
+  salesAmt: number;
+  avgRnk: number;
+};
 
-/** 특정 순위 도달에 필요한 예상 입찰가 조회 (연관 입찰가 API). */
-export async function fetchEstimateBid(params: {
-  device: "PC" | "MOBILE";
-  keywordId: string;
-  key: string; // biz channel key 등, 계정 세팅에 따라 다름 — 실 계정 연동 시 조정 필요
-  targetRank: number;
-}) {
-  return searchAdRequest<EstimateBid>("GET", "/estimate/average-position-bid/keyword", {
+/** 키워드의 실제 광고 통계(공식 API) — 노출수·클릭수·평균 노출순위(avgRnk) 등.
+ * "우리 순위"는 이 avgRnk를 쓴다 — 파워링크 페이지를 스크래핑해 추정하는 것보다
+ * 우리 자신의 실제 집행 데이터라 훨씬 정확하고, 네이버가 자동화 세션에는 파워링크
+ * 광고 콘텐츠 자체를 보여주지 않는 문제(CLAUDE.md의 "왜 스크래핑을 안 쓰는가" 절 참고)와
+ * 무관하게 항상 얻을 수 있다. */
+export async function fetchKeywordStatReport(keywordId: string, since: string, until: string) {
+  return searchAdRequest<{ data: StatDay[] }>("GET", "/stats", {
     query: {
-      device: params.device,
-      key: params.key,
-      keywordId: params.keywordId,
-      targetRank: String(params.targetRank),
+      id: keywordId,
+      fields: JSON.stringify(["impCnt", "clkCnt", "ctr", "cpc", "salesAmt", "avgRnk"]),
+      timeRange: JSON.stringify({ since, until }),
     },
   });
 }
+

@@ -10,15 +10,46 @@
 
 ## 개요
 
-- **입력**: 네이버 검색광고(SearchAd) API(공식), 네이버 검색결과 페이지(파워링크/블로그 —
-  공식 API가 없는 항목에 한해 Playwright 스크래핑), 네이버 블로그 RSS(공식).
+- **입력**: 네이버 검색광고(SearchAd) API(공식, `api.searchad.naver.com`), 네이버 블로그
+  검색 오픈API(공식, `openapi.naver.com`). **스크래핑은 전혀 쓰지 않는다** — 아래
+  "왜 스크래핑을 안 쓰는가" 참고.
 - **출력**: 공유 Supabase 프로젝트의 `keywords`, `keyword_daily_metrics`, `competitors`,
   `ad_spend_estimates`, `blog_posts`, `blog_sov_daily`, `posting_cadence`, `pipeline_runs`,
   `daily_reports`, `alerts` 테이블. 로컬 `data/raw/`(원본 스냅샷)·`data/processed/`(정제본)·
   `output/`(자연어 리포트 md)도 감사/백업용으로 남긴다.
-- **역할 분담**: 결정적 단계(API 호출, 스크래핑, 계산, DB 쓰기)는 `scripts/`의 TypeScript
-  코드가 하고, 판단이 필요한 단계(이상치 서술, 도메인 매핑 애매한 경우 보정, 리포트 작성,
-  콘텐츠 톤 분석)는 이 파일과 `.claude/agents/*/AGENT.md`를 읽는 Claude 세션이 직접 한다.
+- **역할 분담**: 결정적 단계(API 호출, 계산, DB 쓰기)는 `scripts/`의 TypeScript 코드가 하고,
+  판단이 필요한 단계(이상치 서술, 리포트 작성, 콘텐츠 톤 분석)는 이 파일과
+  `.claude/agents/*/AGENT.md`를 읽는 Claude 세션이 직접 한다.
+
+## 왜 스크래핑을 안 쓰는가 (중요 — 실측 확인, 2026-08-16)
+
+원래 계획은 네이버 검색결과 페이지(파워링크 노출순서, 블로그 검색결과)를 Playwright로
+스크래핑하는 것이었다(공식 API가 없는 영역이라는 전제). 에어패스 실 계정으로 검증한 결과:
+
+1. **`search.naver.com/robots.txt`가 모든 User-agent에 대해 전체 경로를 금지한다**
+   (`Disallow: /`). `rss.blog.naver.com/robots.txt`도 마찬가지로 전면 금지. 셀렉터가
+   깨질 수 있다는 수준이 아니라, 애초에 이 경로들을 크롤링하면 안 된다.
+2. robots.txt를 확인하기 전 디버깅 단계에서도, 실제 입찰 경쟁이 있는 키워드("자동차보험" 등)
+   조차 파워링크 광고 콘텐츠 자체가 자동화 세션에는 렌더링되지 않았다(조직 검색결과는
+   정상적으로 나옴 — 네이버의 광고 사기 방지 조치로 추정).
+
+그래서(사용자 확인 완료) 스크래핑을 전면 포기하고 공식 API로만 재설계했다:
+
+- **A3 "우리 순위"**: 검색광고 공식 통계 API(`GET /stats`의 `avgRnk`, 실제 광고 집행 데이터)로
+  얻는다. 우리 자신의 실제 데이터라 스크래핑 추정치보다 정확하고 robots.txt와도 무관하다.
+  (`scripts/skills/naver-rank-tracker.ts`, 옛 이름 naver-serp-scraper)
+- **A4/A5 "경쟁사 파워링크 도메인·광고비 추정"**: 경쟁사 입찰 데이터는 네이버가 제3자에게
+  공개하는 공식 API가 없고 스크래핑도 막혀 있어, **자동 수집을 포기했다**
+  (`scripts/skills/ad-spend-estimator.ts`는 항상 빈 배열을 반환). 리포트에는 "경쟁사 광고비는
+  공식 API·합법적 수집 경로가 없어 자동 수집하지 못했다"고 명시한다 — 근거 없는 추정치를
+  지어내지 않는다(환각 차단 원칙).
+- **B2 "블로그 검색결과"/B3 "경쟁사 게시물"**: 네이버 공식 블로그 검색 오픈API
+  (`openapi.naver.com/v1/search/blog.json`, 개발자센터에서 무료 발급)로 통합했다
+  (`scripts/skills/naver-blog-fetch.ts`). 이 API에는 "특정 블로거의 전체 글 목록" 조회
+  기능이 없어, B3(포스팅 주기)의 범위가 "모니터링 키워드와 관련된 게시물"로 좁혀진다 —
+  경쟁사 전체 블로그 활동이 아니라 우리 키워드 주변 활동량이라는 뜻(사용자 확인 완료).
+  이 API도 `robots.txt: Disallow: /`가 있지만, 이는 색인 크롤러용 규칙이고 발급받은 키로
+  인증하는 공식 개발자 API 호출에는 적용되는 관례가 아니다(검색광고 API와 동일하게 취급).
 
 ## 오케스트레이터 (O1~O4)
 
@@ -58,7 +89,7 @@ output/
   daily/ weekly/ monthly/    자연어 리포트 md(로컬 백업, 원본은 Supabase daily_reports)
   _pipeline_state.json        로컬 파이프라인 상태
 scripts/
-  lib/                        공통 유틸(Supabase 클라이언트, 재시도, 스크래핑 유틸, 설정 로더 등)
+  lib/                        공통 유틸(Supabase 클라이언트, 재시도, 설정 로더, API 클라이언트 등)
   skills/                     각 스킬의 실제 구현(SKILL.md가 이 스크립트들을 어떻게 쓰는지 설명)
   validate-schema.ts           A8/B8 직전 스키마 검증(훅에서 호출)
   brand-tone-check.ts           리포트 발행 전 체크(훅에서 호출)
@@ -90,45 +121,41 @@ scripts/
 `scripts/lib/supabase-sync.ts::ensureCompetitors` 참고. `alerts`는 같은 날 여러 건이 허용되므로
 매번 insert한다.)
 
-## 스크래핑 대상 범위 (중요)
+## API 호출 대상 범위 (중요)
 
 실제 에어패스 계정으로 시범 실행해보니 활성 키워드가 계획 당시 예상(10~30개)과 달리
 **900개 이상**이었다. 검색량·경쟁정도(A2, 공식 API)는 전체 키워드에 대해 매일 수집하지만,
-Playwright 스크래핑이 필요한 A3(파워링크 노출순서)·B2(블로그 검색결과)는 전체를 다 돌리면
-실행시간이 30분~1시간을 넘고 네이버 차단 위험도 커서, **월간검색량 상위 50개**로만 범위를
-좁히기로 사용자와 확정했다(`scripts/lib/keyword-scope.ts::SCRAPE_TARGET_COUNT`). 이 값을
-바꾸고 싶으면 이 상수를 수정한다.
+키워드별로 별도 API 호출이 필요한 A3(우리 순위)·B2/B3(블로그)는 전체를 매일 다 돌리면
+비효율적이라, **월간검색량 상위 50개**로만 범위를 좁히기로 사용자와 확정했다
+(`scripts/lib/keyword-scope.ts::SCRAPE_TARGET_COUNT`). 이 값을 바꾸고 싶으면 이 상수를 수정한다.
 
 ## 환경변수
 
 `.env.example` 참고. `SUPABASE_URL`/`SUPABASE_SERVICE_ROLE_KEY`는 `airpass-naver-dashboard`와
-**같은 Supabase 프로젝트**를 가리켜야 한다. `AIRPASS_DOMAIN`은 파워링크 결과에서 "우리 순위"를
-식별하는 데 쓰인다.
+**같은 Supabase 프로젝트**를 가리켜야 한다. `NAVER_SEARCHAD_*`는 검색광고 API(개발자센터와
+별개, searchad.naver.com에서 발급), `NAVER_OPENAPI_*`는 블로그 검색 API(developers.naver.com
+개발자센터에서 별도 애플리케이션 등록 필요) — 서로 다른 두 세트의 키다.
 
 ## 트러블슈팅
 
-- **`fetchEstimateBid` 미연동**: 경쟁사 광고비 추정(A5)의 CPC 프록시 조회가 아직 실 계정에
-  맞춰 완성되지 않았다 — `.claude/skills/ad-spend-estimator/SKILL.md`의 "알려진 미완성 지점" 참고.
-- **파워링크/블로그 셀렉터 깨짐**: 네이버 마크업이 바뀌면 `naver-serp-scraper`/`naver-blog-fetch`의
-  Playwright 로케이터가 빈 결과를 반환할 수 있다 — 실제 페이지 구조를 확인해 셀렉터를 갱신한다.
 - **훅이 저장을 거부함**: `data/processed/{ads,blog}_*.json`이나 `output/**/*.md` 저장이 막히면
   에러 메시지에 나열된 항목(calc_basis 누락, evidence_ref 누락, 파일명 규칙 위반 등)을 고쳐서
   다시 저장한다 — 훅을 비활성화하지 않는다.
 - **`claude -p` 헤드리스 실행이 권한 프롬프트에서 멈춤**: `scripts/run-daily.sh`는
   `--permission-mode bypassPermissions`를 쓴다. 이 프로젝트 디렉터리 바깥의 다른 작업에 이
   플래그를 재사용하지 않는다.
+- **경쟁사 광고비가 항상 비어 있음**: 의도된 동작이다 — 위 "왜 스크래핑을 안 쓰는가" 참고.
 
 ## 실행 명령
 
 ```bash
 npm install
-npx playwright install chromium   # 최초 1회, Playwright 브라우저 바이너리 설치
 npm run typecheck
 
 # 개별 스킬 테스트 (전부 data/raw/<오늘>/*.json을 읽고 씀)
 npm run sync:keywords
 npm run fetch:searchad
-npm run scrape:serp
+npm run fetch:rank
 npm run fetch:blog
 npm run analyze:cadence
 npm run calculate:sov
