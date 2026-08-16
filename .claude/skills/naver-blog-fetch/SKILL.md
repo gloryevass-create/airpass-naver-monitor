@@ -9,6 +9,10 @@ description: 키워드별 블로그 검색결과 상위 노출(B2)과 경쟁사 
 
 ## B2: 키워드별 블로그 검색결과 (스크래핑)
 
+- `naver-serp-scraper`(A3)와 동일하게, 계정 전체 키워드가 아니라 월간검색량 상위
+  `SCRAPE_TARGET_COUNT`(기본 50)개만 대상으로 한다(`scripts/lib/keyword-scope.ts`,
+  `getOrComputeScrapeTargets`) — blog-monitor가 ad-monitor 없이 단독 실행되어도 필요한 raw
+  데이터를 알아서 만들어 같은 상위 50개 기준을 쓴다.
 - `https://search.naver.com/search.naver?where=blog&query=...`를 Playwright로 렌더링해 상위 10개
   게시물의 블로거 ID를 노출 순서대로 추출한다.
 - 네이버 공식 블로그 검색 오픈API(openapi.naver.com)가 있지만, 그 정렬은 실제 검색결과 화면과

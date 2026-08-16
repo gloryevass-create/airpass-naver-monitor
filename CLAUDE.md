@@ -90,6 +90,15 @@ scripts/
 `scripts/lib/supabase-sync.ts::ensureCompetitors` 참고. `alerts`는 같은 날 여러 건이 허용되므로
 매번 insert한다.)
 
+## 스크래핑 대상 범위 (중요)
+
+실제 에어패스 계정으로 시범 실행해보니 활성 키워드가 계획 당시 예상(10~30개)과 달리
+**900개 이상**이었다. 검색량·경쟁정도(A2, 공식 API)는 전체 키워드에 대해 매일 수집하지만,
+Playwright 스크래핑이 필요한 A3(파워링크 노출순서)·B2(블로그 검색결과)는 전체를 다 돌리면
+실행시간이 30분~1시간을 넘고 네이버 차단 위험도 커서, **월간검색량 상위 50개**로만 범위를
+좁히기로 사용자와 확정했다(`scripts/lib/keyword-scope.ts::SCRAPE_TARGET_COUNT`). 이 값을
+바꾸고 싶으면 이 상수를 수정한다.
+
 ## 환경변수
 
 `.env.example` 참고. `SUPABASE_URL`/`SUPABASE_SERVICE_ROLE_KEY`는 `airpass-naver-dashboard`와

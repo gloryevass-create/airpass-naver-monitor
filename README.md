@@ -90,6 +90,13 @@ npm run run:daily   # = bash scripts/run-daily.sh
 
 등록: `launchctl load ~/Library/LaunchAgents/com.airpass.naver-monitor.plist`
 
+## 스크래핑 대상 범위
+
+실 계정 기준 활성 키워드가 900개를 넘어, 파워링크·블로그 검색결과 스크래핑(A3/B2)은 전체가
+아니라 **월간검색량 상위 50개**만 대상으로 합니다(검색량·경쟁정도는 공식 API라 전체 키워드를
+매일 수집합니다). 이 개수를 바꾸려면 `scripts/lib/keyword-scope.ts`의 `SCRAPE_TARGET_COUNT`를
+수정하세요.
+
 ## 운영상 주의
 
 - `scripts/run-daily.sh`는 `claude -p --permission-mode bypassPermissions`로 실행됩니다(무인

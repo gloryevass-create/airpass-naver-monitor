@@ -1,10 +1,10 @@
 import { chromium } from "playwright";
-import { readJson, writeJson, rawPath } from "../lib/files";
+import { writeJson, rawPath } from "../lib/files";
 import { todayKst } from "../lib/dates";
 import { isAllowedByRobots, politeDelay } from "../lib/scrape-utils";
 import { withRetry } from "../lib/retry";
 import { loadCompetitors } from "../lib/config";
-import type { SyncResult } from "./naver-keyword-sync";
+import { getOrComputeScrapeTargets, SCRAPE_TARGET_COUNT } from "../lib/keyword-scope";
 
 const TOP_N = 10;
 
@@ -33,20 +33,19 @@ function extractBlogIdFromUrl(url: string): string | null {
 /** B2: 키워드별 블로그 검색결과 상위 N개의 블로거 ID 수집(SOV 계산의 원천 데이터).
  * 네이버 공식 블로그 검색 오픈API가 있지만 그 결과 정렬은 실제 이용자가 보는
  * 검색결과 화면과 다를 수 있어(A3와 동일한 이유로) 이 프로젝트는 실제 검색결과
- * 페이지를 스크래핑한다 — 한계는 scripts/lib/scrape-utils.ts 상단 주석 참고. */
+ * 페이지를 스크래핑한다 — 한계는 scripts/lib/scrape-utils.ts 상단 주석 참고.
+ *
+ * A3와 같은 이유로 계정 전체 키워드가 아니라 월간검색량 상위 SCRAPE_TARGET_COUNT
+ * (기본 50)개만 대상으로 한다(사용자 확인 완료). blog-monitor가 ad-monitor 없이
+ * 단독 실행되어도 getOrComputeScrapeTargets가 필요한 raw 데이터를 알아서 만든다. */
 export async function fetchBlogSerp(date: string = todayKst()): Promise<BlogSerpResult[]> {
-  const synced = readJson<SyncResult>(rawPath(date, "keywords_synced.json"));
-  if (!synced) {
-    throw new Error(
-      `${rawPath(date, "keywords_synced.json")} 없음 — naver-keyword-sync를 먼저 실행하세요.`
-    );
-  }
+  const targets = await getOrComputeScrapeTargets(date);
 
   const searchUrl = "https://search.naver.com/search.naver";
   const allowed = await isAllowedByRobots(`${searchUrl}?where=blog`);
   if (!allowed) {
     console.warn("[naver-blog-fetch] robots.txt disallow — 블로그 SERP 수집 전체 스킵");
-    const skipped = synced.synced.map((k) => ({
+    const skipped = targets.map((k) => ({
       naver_keyword_id: k.naver_keyword_id,
       keyword: k.keyword,
       topBlogIds: [],
@@ -66,7 +65,7 @@ export async function fetchBlogSerp(date: string = todayKst()): Promise<BlogSerp
         "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0 Safari/537.36",
     });
 
-    for (const kw of synced.synced) {
+    for (const kw of targets) {
       await politeDelay();
       try {
         const result = await withRetry(
@@ -157,7 +156,9 @@ export async function fetchCompetitorBlogPosts(date: string = todayKst()): Promi
 if (import.meta.url === `file://${process.argv[1]}`) {
   Promise.all([fetchBlogSerp(), fetchCompetitorBlogPosts()])
     .then(([serp, posts]) =>
-      console.log(`[naver-blog-fetch] SERP ${serp.length}개 키워드, 게시물 ${posts.length}건 수집 완료`)
+      console.log(
+        `[naver-blog-fetch] 월간검색량 상위 ${SCRAPE_TARGET_COUNT}개 중 SERP ${serp.length}개 키워드, 게시물 ${posts.length}건 수집 완료`
+      )
     )
     .catch((e) => {
       console.error(`[naver-blog-fetch] 실패: ${e.message}`);

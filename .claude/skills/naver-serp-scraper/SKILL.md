@@ -11,15 +11,24 @@ description: 키워드별 네이버 검색결과 페이지의 파워링크(광�
 데이터는 반드시 `naver-searchad-fetch`(공식 API)로 가져오고, 이 스킬은 **공식 API가 없는 항목에
 한해서만** 실제 검색결과 페이지를 렌더링해 파싱한다.
 
+## 대상 범위
+
+계정 전체 키워드(수백~천 개 규모)를 매일 다 스크래핑하면 실행시간이 너무 길고 네이버가
+비정상 트래픽으로 차단할 위험이 커서, **월간검색량 상위 `SCRAPE_TARGET_COUNT`(기본 50)개**로만
+범위를 좁힌다(`scripts/lib/keyword-scope.ts`). 검색량·경쟁정도(A2)는 공식 API라 여전히 전체
+키워드를 매일 수집하지만, 실제 순위·경쟁사 현황을 보는 것은 이 상위 N개뿐이다.
+
 ## 절차
 
-1. `naver-keyword-sync`가 먼저 실행되어 있어야 한다.
+1. `getOrComputeScrapeTargets`가 `data/raw/<오늘>/scrape_targets.json`이 있으면 그대로 쓰고,
+   없으면 `naver-keyword-sync`/`naver-searchad-fetch`를 필요한 만큼 직접 호출해 만든다 —
+   따로 먼저 실행해두지 않아도 된다.
 2. 다음을 실행한다:
    ```
    npx tsx scripts/skills/naver-serp-scraper.ts
    ```
-3. 키워드마다 `https://search.naver.com/search.naver?query=...`를 Playwright(headless Chromium)로
-   열어 파워링크 영역의 링크를 순서대로 추출하고, 도메인을 정규화해 고유 목록을 만든다.
+3. 대상 키워드마다 `https://search.naver.com/search.naver?query=...`를 Playwright(headless
+   Chromium)로 열어 파워링크 영역의 링크를 순서대로 추출하고, 도메인을 정규화해 고유 목록을 만든다.
 4. `AIRPASS_DOMAIN` 환경변수와 비교해 에어패스 자신의 순위(`ourRank`)를 찾는다.
 5. 결과를 `data/raw/<오늘>/serp_snapshot.json`에 저장한다.
 
