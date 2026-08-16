@@ -60,7 +60,9 @@ async function syncAds(filePath: string) {
       monthly_search_mobile: m.monthly_search_mobile ?? null,
       avg_cpc: m.avg_cpc ?? null,
       competition_level: m.competition_level ?? null,
-      our_rank: m.our_rank ?? null,
+      // keyword_daily_metrics.our_rank는 integer 컬럼인데, 검색광고 공식 통계의 avgRnk는
+      // 여러 날짜/노출의 평균이라 소수(예: 22.3)로 온다 — 반올림해서 저장한다.
+      our_rank: m.our_rank != null ? Math.round(m.our_rank) : null,
     }));
   await upsertKeywordDailyMetrics(metricRows);
 
