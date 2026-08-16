@@ -141,8 +141,11 @@ scripts/
 
 - **A3(우리 순위)**: 월간검색량 상위 `SCRAPE_TARGET_COUNT`(기본 50)개
   (`scripts/lib/keyword-scope.ts`).
+- **A2.6(평균 CPC)**: 917개 전체(`scripts/skills/naver-keyword-cpc-fetch.ts`) — 순차 호출로
+  약 3분 소요. A3와 달리 대상을 좁히지 않는다(사용자 요구로 전체 커버리지 선택,
+  2026-08-17).
 - **B2(블로그 SOV 검색어)**: 검색량이 아니라 "실제 경쟁사 게시물 제목과 겹치는" 키워드
-  최대 `BLOG_KEYWORD_COUNT`(기본 30)개(`scripts/lib/blog-keyword-scope.ts`) — A3와 기준이
+  최대 `BLOG_KEYWORD_COUNT`개(`scripts/lib/blog-keyword-scope.ts`) — A3와 기준이
   다르다는 점에 유의(위 "왜 스크래핑을 안 쓰는가"의 B2 항목 참고).
 
 이 값들을 바꾸고 싶으면 각 상수를 수정한다.
@@ -174,6 +177,7 @@ npm run typecheck
 npm run sync:keywords
 npm run fetch:searchad
 npm run fetch:account-stats
+npm run fetch:cpc
 npm run fetch:rank
 npm run fetch:blog
 npm run analyze:cadence
