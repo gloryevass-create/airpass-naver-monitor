@@ -95,8 +95,6 @@
 config/
   competitors.yaml         경쟁사 목록(수동 등록, 5~10곳)
   keyword_exclude.yaml     자동 동기화 키워드 중 제외 목록(선택)
-  news_keywords.yaml       뉴스 모니터링 검색 키워드 목록
-  budget_keywords.yaml     예산·사업명 모니터링(나라장터) 검색 키워드 목록
 data/
   raw/YYYY-MM-DD/           원본 스냅샷(감사·재현용, git 미포함)
   processed/                 최종 검증된 정제 JSON(Supabase 반영 직전본, git 미포함)
@@ -140,6 +138,14 @@ scripts/
 (`competitors`는 unique 제약이 없어 이름 기준 "조회 후 없으면 생성"으로 중복을 막는다 —
 `scripts/lib/supabase-sync.ts::ensureCompetitors` 참고. `alerts`는 같은 날 여러 건이 허용되므로
 매번 insert한다.)
+
+## 뉴스·예산 모니터링 검색 키워드
+
+`config/news_keywords.yaml`/`config/budget_keywords.yaml` 정적 파일이 아니라 Supabase
+`monitor_keywords` 테이블(track='news'|'budget')에서 읽는다(`scripts/lib/monitor-keywords.ts::fetchMonitorKeywords`,
+마이그레이션 0010) — 팀원이 대시보드(`/dashboard/news`, `/dashboard/budget`)에서 직접
+추가·삭제하면 코드 배포 없이 다음 날 수집부터 바로 반영된다. 이 파이프라인은 이 테이블에
+쓰지 않고 읽기만 한다(쓰기는 대시보드의 authenticated 사용자 몫).
 
 ## API 호출 대상 범위 (중요)
 

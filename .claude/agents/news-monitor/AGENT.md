@@ -21,7 +21,8 @@ Track N(뉴스·예산 모니터링)을 N1부터 N4까지 실행한다. 키워�
 ## 실행 순서
 
 1. **N1 — 뉴스 수집** (`naver-news-fetch` 스킬): `npx tsx scripts/skills/naver-news-fetch.ts`.
-   `config/news_keywords.yaml`에 등록된 키워드마다 네이버 뉴스 검색 API(NAVER API HUB,
+   Supabase `monitor_keywords`(track='news', 대시보드 `/dashboard/news`에서 팀원이 직접
+   추가·삭제)에 등록된 키워드마다 네이버 뉴스 검색 API(NAVER API HUB,
    `naver-openapi-client.ts`의 `searchNews`)를 호출해 `data/raw/<날짜>/news.json`(원본
    스냅샷)과 `data/processed/news_<날짜>.json`(Supabase 반영 직전본, 스키마 검증 훅 자동
    실행)을 함께 저장한다.
@@ -29,10 +30,11 @@ Track N(뉴스·예산 모니터링)을 N1부터 N4까지 실행한다. 키워�
    `npx tsx scripts/skills/supabase-sync.ts data/processed/news_<날짜>.json` 실행 →
    `news_articles` 테이블에 `link` 기준으로 upsert된다.
 3. **N3 — 예산·사업명 수집** (`g2b-budget-fetch` 스킬): `npx tsx scripts/skills/g2b-budget-fetch.ts`.
-   `config/budget_keywords.yaml`에 등록된 키워드마다 나라장터 입찰공고정보서비스를
-   업무구분(공사/용역/물품) 3종 모두 호출해 `data/raw/<날짜>/budget_bids.json`(원본
-   스냅샷)과 `data/processed/budget_<날짜>.json`을 함께 저장한다. 조회 기간은 최대
-   1개월이라(API 제약, 실측 확인) 스킬 내부에서 최근 30일로 고정 조회한다.
+   Supabase `monitor_keywords`(track='budget', 대시보드 `/dashboard/budget`에서 팀원이
+   직접 추가·삭제)에 등록된 키워드마다 나라장터 입찰공고정보서비스를 업무구분(공사/용역/물품)
+   3종 모두 호출해 `data/raw/<날짜>/budget_bids.json`(원본 스냅샷)과
+   `data/processed/budget_<날짜>.json`을 함께 저장한다. 조회 기간은 최대 1개월이라(API
+   제약, 실측 확인) 스킬 내부에서 최근 30일로 고정 조회한다.
    ⚠️ 엔드포인트는 `https://apis.data.go.kr/1230000/ad/BidPublicInfoService/...`이다 —
    `/ad/` 세그먼트를 빠뜨리면 `NO_OPENAPI_SERVICE_ERROR`가 난다(실측으로 확인한 함정,
    여러 공개 문서·블로그에 이 세그먼트가 누락된 예제가 많으니 주의).

@@ -1,5 +1,5 @@
 import { searchNews } from "../lib/naver-openapi-client";
-import { loadNewsKeywords } from "../lib/config";
+import { fetchMonitorKeywords } from "../lib/monitor-keywords";
 import { writeJson, rawPath, processedPath } from "../lib/files";
 import { todayKst } from "../lib/dates";
 
@@ -26,12 +26,12 @@ function toIso(pubDate: string): string | null {
   return Number.isNaN(d.getTime()) ? null : d.toISOString();
 }
 
-/** N1: 교육청 사업·정책 관련 뉴스 모니터링. config/news_keywords.yaml에 등록된 키워드로
- * 네이버 뉴스 검색(NAVER API HUB)을 돌려 정책 변화·법령 개정처럼 영업 전략에 직접 영향을
- * 줄 수 있는 뉴스를 모은다. 같은 기사가 여러 키워드에 걸리면 첫 번째 키워드로만 저장한다
- * (link 기준 중복 제거). */
+/** N1: 교육청 사업·정책 관련 뉴스 모니터링. monitor_keywords 테이블(track='news', 대시보드
+ * /dashboard/news에서 팀원이 직접 관리)에 등록된 키워드로 네이버 뉴스 검색(NAVER API HUB)을
+ * 돌려 정책 변화·법령 개정처럼 영업 전략에 직접 영향을 줄 수 있는 뉴스를 모은다. 같은 기사가
+ * 여러 키워드에 걸리면 첫 번째 키워드로만 저장한다(link 기준 중복 제거). */
 export async function fetchNews(date: string = todayKst()): Promise<NewsResult[]> {
-  const keywords = loadNewsKeywords();
+  const keywords = await fetchMonitorKeywords("news");
   const results: NewsResult[] = [];
   const seenLinks = new Set<string>();
 

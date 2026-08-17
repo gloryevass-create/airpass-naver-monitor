@@ -1,5 +1,5 @@
 import { searchBids, type BusinessType, type BidItem } from "../lib/g2b-client";
-import { loadBudgetKeywords } from "../lib/config";
+import { fetchMonitorKeywords } from "../lib/monitor-keywords";
 import { writeJson, rawPath, processedPath } from "../lib/files";
 import { todayKst, daysBeforeKst } from "../lib/dates";
 
@@ -55,12 +55,12 @@ function mapItem(keyword: string, businessType: BusinessType, item: BidItem): Bu
 
 /** N3: 교육청 예산·사업명 모니터링(나라장터 입찰공고정보서비스, 공식 API).
  *
- * config/budget_keywords.yaml에 등록된 키워드마다 업무구분(공사/용역/물품) 3종을 모두
- * 조회한다 — 같은 사업이라도 발주 방식에 따라 공사/용역/물품 어디에 걸릴지 예측할 수
- * 없어서다. 같은 공고가 여러 키워드에 걸리면 (bid_no, bid_ord) 기준으로 중복 제거하되
- * 먼저 매칭된 키워드를 유지한다. */
+ * monitor_keywords 테이블(track='budget', 대시보드 /dashboard/budget에서 팀원이 직접 관리)에
+ * 등록된 키워드마다 업무구분(공사/용역/물품) 3종을 모두 조회한다 — 같은 사업이라도 발주
+ * 방식에 따라 공사/용역/물품 어디에 걸릴지 예측할 수 없어서다. 같은 공고가 여러 키워드에
+ * 걸리면 (bid_no, bid_ord) 기준으로 중복 제거하되 먼저 매칭된 키워드를 유지한다. */
 export async function fetchBudgetBids(date: string = todayKst()): Promise<BudgetBid[]> {
-  const keywords = loadBudgetKeywords();
+  const keywords = await fetchMonitorKeywords("budget");
   const since = daysBeforeKst(date, WINDOW_DAYS - 1).replace(/-/g, "");
   const until = date.replace(/-/g, "");
 
