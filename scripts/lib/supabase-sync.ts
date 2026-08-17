@@ -143,6 +143,14 @@ export async function upsertNewsArticles(rows: Tables["news_articles"]["Insert"]
   if (error) throw new Error(`news_articles upsert 실패: ${error.message}`);
 }
 
+export async function upsertBudgetBids(rows: Tables["budget_bids"]["Insert"][]) {
+  if (rows.length === 0) return;
+  const { error } = await getSupabaseClient()
+    .from("budget_bids")
+    .upsert(rows, { onConflict: "bid_no,bid_ord" });
+  if (error) throw new Error(`budget_bids upsert 실패: ${error.message}`);
+}
+
 export async function upsertDailyReport(row: Tables["daily_reports"]["Insert"]) {
   const { error } = await getSupabaseClient()
     .from("daily_reports")

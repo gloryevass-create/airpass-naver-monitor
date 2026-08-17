@@ -15,7 +15,7 @@
   "왜 스크래핑을 안 쓰는가" 참고.
 - **출력**: 공유 Supabase 프로젝트의 `keywords`, `keyword_daily_metrics`, `competitors`,
   `ad_spend_estimates`, `ad_account_daily_stats`, `blog_posts`, `blog_sov_daily`, `posting_cadence`,
-  `pipeline_runs`, `daily_reports`, `alerts`, `news_articles` 테이블. 로컬 `data/raw/`(원본 스냅샷)·
+  `pipeline_runs`, `daily_reports`, `alerts`, `news_articles`, `budget_bids` 테이블. 로컬 `data/raw/`(원본 스냅샷)·
   `data/processed/`(정제본)·`output/`(자연어 리포트 md)도 감사/백업용으로 남긴다.
 - **역할 분담**: 결정적 단계(API 호출, 계산, DB 쓰기)는 `scripts/`의 TypeScript 코드가 하고,
   판단이 필요한 단계(이상치 서술, 리포트 작성, 콘텐츠 톤 분석)는 이 파일과
@@ -69,7 +69,7 @@
 - **O1**: `.claude/agents/ad-monitor/AGENT.md` 지시대로 ad-monitor(A0~A8)를 먼저 실행한다.
   끝나면 `.claude/agents/blog-monitor/AGENT.md` 지시대로 blog-monitor(B1~B8)를 실행한다.
   (두 트랙은 서로 독립이지만, 매일 실행에서는 순차로 진행해 리소스 경합을 피한다.) 마지막으로
-  `.claude/agents/news-monitor/AGENT.md` 지시대로 news-monitor(N1~N2)를 실행한다 — 이 트랙은
+  `.claude/agents/news-monitor/AGENT.md` 지시대로 news-monitor(N1~N4, 뉴스+예산)를 실행한다 — 이 트랙은
   키워드/경쟁사 데이터와 무관한 완전히 독립적인 트랙이라 A/B 트랙의 성공 여부와 상관없이
   항상 실행한다.
 - **O2**: 오늘 날짜의 `pipeline_runs`에서 `track='ad'`와 `track='blog'`가 **둘 다** `status='success'`인
@@ -96,6 +96,7 @@ config/
   competitors.yaml         경쟁사 목록(수동 등록, 5~10곳)
   keyword_exclude.yaml     자동 동기화 키워드 중 제외 목록(선택)
   news_keywords.yaml       뉴스 모니터링 검색 키워드 목록
+  budget_keywords.yaml     예산·사업명 모니터링(나라장터) 검색 키워드 목록
 data/
   raw/YYYY-MM-DD/           원본 스냅샷(감사·재현용, git 미포함)
   processed/                 최종 검증된 정제 JSON(Supabase 반영 직전본, git 미포함)
@@ -134,6 +135,7 @@ scripts/
 | `pipeline_runs` | `date,track` |
 | `daily_reports` | `date,report_type,track` |
 | `news_articles` | `link` |
+| `budget_bids` | `bid_no,bid_ord` |
 
 (`competitors`는 unique 제약이 없어 이름 기준 "조회 후 없으면 생성"으로 중복을 막는다 —
 `scripts/lib/supabase-sync.ts::ensureCompetitors` 참고. `alerts`는 같은 날 여러 건이 허용되므로
@@ -160,8 +162,10 @@ scripts/
 
 `.env.example` 참고. `SUPABASE_URL`/`SUPABASE_SERVICE_ROLE_KEY`는 `airpass-naver-dashboard`와
 **같은 Supabase 프로젝트**를 가리켜야 한다. `NAVER_SEARCHAD_*`는 검색광고 API(개발자센터와
-별개, searchad.naver.com에서 발급), `NAVER_OPENAPI_*`는 블로그 검색 API(developers.naver.com
-개발자센터에서 별도 애플리케이션 등록 필요) — 서로 다른 두 세트의 키다.
+별개, searchad.naver.com에서 발급), `NAVER_OPENAPI_*`는 블로그·뉴스 검색 API(NAVER API HUB,
+네이버클라우드플랫폼 콘솔에서 별도 애플리케이션 등록 필요) — 서로 다른 두 세트의 키다.
+`G2B_SERVICE_KEY`는 data.go.kr "조달청_나라장터 입찰공고정보서비스" 활용신청으로 발급받은
+일반 인증키(Encoding)를 **그대로**(재인코딩하지 않고) 붙여넣는다.
 
 ## 트러블슈팅
 
@@ -172,6 +176,12 @@ scripts/
   `--permission-mode bypassPermissions`를 쓴다. 이 프로젝트 디렉터리 바깥의 다른 작업에 이
   플래그를 재사용하지 않는다.
 - **경쟁사 광고비가 항상 비어 있음**: 의도된 동작이다 — 위 "왜 스크래핑을 안 쓰는가" 참고.
+- **나라장터 API가 `NO_OPENAPI_SERVICE_ERROR`("해당 오픈API 서비스가 없거나 폐기됨")를 냄**:
+  키 문제가 아니라(활용신청 승인된 키도 동일하게 발생) URL 경로에 `/ad/` 세그먼트가 빠진
+  것이다(실측으로 확인, 2026-08-17 — 여러 공개 블로그·문서 예제에도 이 세그먼트가 빠져
+  있어 그대로 따라 하면 실패한다). 올바른 경로는
+  `https://apis.data.go.kr/1230000/ad/BidPublicInfoService/<오퍼레이션명>`이다
+  (`scripts/lib/g2b-client.ts` 참고).
 
 ## 실행 명령
 
@@ -190,10 +200,12 @@ npm run analyze:cadence
 npm run calculate:sov
 npm run estimate:spend
 npm run fetch:news
+npm run fetch:budget
 
 # 최종 반영 (검증 통과한 data/processed/*.json에 대해)
 npm run sync:supabase -- data/processed/ads_YYYY-MM-DD.json
 npm run sync:supabase -- data/processed/news_YYYY-MM-DD.json
+npm run sync:supabase -- data/processed/budget_YYYY-MM-DD.json
 
 # 전체 파이프라인 (claude -p 헤드리스)
 npm run run:daily

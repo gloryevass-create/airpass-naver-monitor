@@ -14,6 +14,7 @@ import {
   upsertBlogSovDaily,
   upsertPostingCadence,
   upsertNewsArticles,
+  upsertBudgetBids,
   insertAlerts,
   upsertDailyReport,
 } from "../lib/supabase-sync";
@@ -70,6 +71,24 @@ type ProcessedNews = {
     link: string;
     description?: string | null;
     published_at?: string | null;
+  }[];
+};
+
+type ProcessedBudget = {
+  date: string;
+  bids: {
+    keyword: string;
+    business_type: "cnstwk" | "servc" | "thng";
+    bid_no: string;
+    bid_ord: string;
+    title: string;
+    notice_inst?: string | null;
+    demand_inst?: string | null;
+    budget_amount?: number | null;
+    presmpt_price?: number | null;
+    notice_date?: string | null;
+    opening_date?: string | null;
+    detail_url?: string | null;
   }[];
 };
 
@@ -217,10 +236,37 @@ async function syncNews(filePath: string) {
   console.log(`[supabase-sync] news 트랙 동기화 완료 (${data.date}) — ${rows.length}건`);
 }
 
+/** N4: 예산 모니터링 결과를 Supabase에 반영. news와 마찬가지로 독립 데이터라
+ * pipeline_runs는 건드리지 않는다. */
+async function syncBudget(filePath: string) {
+  const data = JSON.parse(readFileSync(filePath, "utf-8")) as ProcessedBudget;
+
+  const rows = data.bids.map((b) => ({
+    keyword: b.keyword,
+    business_type: b.business_type,
+    bid_no: b.bid_no,
+    bid_ord: b.bid_ord,
+    title: b.title,
+    notice_inst: b.notice_inst ?? null,
+    demand_inst: b.demand_inst ?? null,
+    budget_amount: b.budget_amount ?? null,
+    presmpt_price: b.presmpt_price ?? null,
+    notice_date: b.notice_date ?? null,
+    opening_date: b.opening_date ?? null,
+    detail_url: b.detail_url ?? null,
+    collected_at: data.date,
+  }));
+  await upsertBudgetBids(rows);
+
+  console.log(`[supabase-sync] budget 트랙 동기화 완료 (${data.date}) — ${rows.length}건`);
+}
+
 async function main() {
   const filePath = process.argv[2];
   if (!filePath) {
-    console.error("사용법: tsx scripts/skills/supabase-sync.ts <data/processed/{ads,blog,news}_YYYY-MM-DD.json>");
+    console.error(
+      "사용법: tsx scripts/skills/supabase-sync.ts <data/processed/{ads,blog,news,budget}_YYYY-MM-DD.json>"
+    );
     process.exit(1);
   }
 
@@ -230,12 +276,15 @@ async function main() {
       await syncBlog(filePath);
     } else if (filename.startsWith("news_")) {
       await syncNews(filePath);
+    } else if (filename.startsWith("budget_")) {
+      await syncBudget(filePath);
     } else {
       await syncAds(filePath);
     }
   } catch (e) {
     const date = filename.match(/\d{4}-\d{2}-\d{2}/)?.[0];
-    const track = filename.startsWith("blog_") ? "blog" : filename.startsWith("news_") ? undefined : "ad";
+    const track =
+      filename.startsWith("blog_") ? "blog" : filename.startsWith("news_") || filename.startsWith("budget_") ? undefined : "ad";
     if (date && track) await recordRun(date, track, "failed", (e as Error).message);
     console.error(`[supabase-sync] 실패: ${(e as Error).message}`);
     process.exit(1);

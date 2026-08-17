@@ -122,6 +122,26 @@ const ProcessedNewsSchema = z.object({
   ),
 });
 
+const ProcessedBudgetSchema = z.object({
+  date: z.string().regex(/^\d{4}-\d{2}-\d{2}$/, "date는 YYYY-MM-DD 형식이어야 합니다"),
+  bids: z.array(
+    z.object({
+      keyword: z.string().min(1),
+      business_type: z.enum(["cnstwk", "servc", "thng"]),
+      bid_no: z.string().min(1),
+      bid_ord: z.string().min(1),
+      title: z.string().min(1),
+      notice_inst: z.string().nullable().optional(),
+      demand_inst: z.string().nullable().optional(),
+      budget_amount: z.number().nullable().optional(),
+      presmpt_price: z.number().nullable().optional(),
+      notice_date: z.string().nullable().optional(),
+      opening_date: z.string().nullable().optional(),
+      detail_url: z.string().nullable().optional(),
+    })
+  ),
+});
+
 function main() {
   const filePath = process.argv[2];
   if (!filePath) {
@@ -134,7 +154,9 @@ function main() {
     ? ProcessedBlogSchema
     : filename.startsWith("news_")
       ? ProcessedNewsSchema
-      : ProcessedAdsSchema;
+      : filename.startsWith("budget_")
+        ? ProcessedBudgetSchema
+        : ProcessedAdsSchema;
 
   let json: unknown;
   try {

@@ -31,4 +31,7 @@ export const env = {
   get naverOpenApiClientSecret() {
     return required("NAVER_OPENAPI_CLIENT_SECRET");
   },
+  get g2bServiceKey() {
+    return required("G2B_SERVICE_KEY");
+  },
 };
