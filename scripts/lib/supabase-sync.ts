@@ -151,6 +151,21 @@ export async function upsertBudgetBids(rows: Tables["budget_bids"]["Insert"][]) 
   if (error) throw new Error(`budget_bids upsert 실패: ${error.message}`);
 }
 
+export async function upsertYoutubeChannelStats(row: Tables["youtube_channel_stats"]["Insert"]) {
+  const { error } = await getSupabaseClient()
+    .from("youtube_channel_stats")
+    .upsert(row, { onConflict: "date" });
+  if (error) throw new Error(`youtube_channel_stats upsert 실패: ${error.message}`);
+}
+
+export async function upsertYoutubeVideos(rows: Tables["youtube_videos"]["Insert"][]) {
+  if (rows.length === 0) return;
+  const { error } = await getSupabaseClient()
+    .from("youtube_videos")
+    .upsert(rows, { onConflict: "video_id" });
+  if (error) throw new Error(`youtube_videos upsert 실패: ${error.message}`);
+}
+
 export async function upsertDailyReport(row: Tables["daily_reports"]["Insert"]) {
   const { error } = await getSupabaseClient()
     .from("daily_reports")

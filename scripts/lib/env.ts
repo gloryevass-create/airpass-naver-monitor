@@ -34,4 +34,10 @@ export const env = {
   get g2bServiceKey() {
     return required("G2B_SERVICE_KEY");
   },
+  get youtubeApiKey() {
+    return required("YOUTUBE_API_KEY");
+  },
+  get youtubeChannelHandle() {
+    return required("YOUTUBE_CHANNEL_HANDLE");
+  },
 };

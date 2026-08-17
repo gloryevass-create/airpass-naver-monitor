@@ -15,6 +15,8 @@ import {
   upsertPostingCadence,
   upsertNewsArticles,
   upsertBudgetBids,
+  upsertYoutubeChannelStats,
+  upsertYoutubeVideos,
   insertAlerts,
   upsertDailyReport,
 } from "../lib/supabase-sync";
@@ -89,6 +91,25 @@ type ProcessedBudget = {
     notice_date?: string | null;
     opening_date?: string | null;
     detail_url?: string | null;
+  }[];
+};
+
+type ProcessedYoutube = {
+  date: string;
+  channel: {
+    subscriber_count: number;
+    view_count: number;
+    video_count: number;
+  };
+  videos: {
+    video_id: string;
+    title: string;
+    published_at?: string | null;
+    view_count: number;
+    like_count: number;
+    comment_count: number;
+    duration_seconds?: number | null;
+    thumbnail_url?: string | null;
   }[];
 };
 
@@ -261,11 +282,38 @@ async function syncBudget(filePath: string) {
   console.log(`[supabase-sync] budget 트랙 동기화 완료 (${data.date}) — ${rows.length}건`);
 }
 
+/** Y2: 유튜브 채널 분석 결과를 Supabase에 반영. news/budget과 마찬가지로 독립 데이터라
+ * pipeline_runs는 건드리지 않는다. */
+async function syncYoutube(filePath: string) {
+  const data = JSON.parse(readFileSync(filePath, "utf-8")) as ProcessedYoutube;
+
+  await upsertYoutubeChannelStats({
+    date: data.date,
+    subscriber_count: data.channel.subscriber_count,
+    view_count: data.channel.view_count,
+    video_count: data.channel.video_count,
+  });
+
+  const videoRows = data.videos.map((v) => ({
+    video_id: v.video_id,
+    title: v.title,
+    published_at: v.published_at ?? null,
+    view_count: v.view_count,
+    like_count: v.like_count,
+    comment_count: v.comment_count,
+    duration_seconds: v.duration_seconds ?? null,
+    thumbnail_url: v.thumbnail_url ?? null,
+  }));
+  await upsertYoutubeVideos(videoRows);
+
+  console.log(`[supabase-sync] youtube 트랙 동기화 완료 (${data.date}) — 영상 ${videoRows.length}건`);
+}
+
 async function main() {
   const filePath = process.argv[2];
   if (!filePath) {
     console.error(
-      "사용법: tsx scripts/skills/supabase-sync.ts <data/processed/{ads,blog,news,budget}_YYYY-MM-DD.json>"
+      "사용법: tsx scripts/skills/supabase-sync.ts <data/processed/{ads,blog,news,budget,youtube}_YYYY-MM-DD.json>"
     );
     process.exit(1);
   }
@@ -278,13 +326,16 @@ async function main() {
       await syncNews(filePath);
     } else if (filename.startsWith("budget_")) {
       await syncBudget(filePath);
+    } else if (filename.startsWith("youtube_")) {
+      await syncYoutube(filePath);
     } else {
       await syncAds(filePath);
     }
   } catch (e) {
     const date = filename.match(/\d{4}-\d{2}-\d{2}/)?.[0];
-    const track =
-      filename.startsWith("blog_") ? "blog" : filename.startsWith("news_") || filename.startsWith("budget_") ? undefined : "ad";
+    const independentTrack =
+      filename.startsWith("news_") || filename.startsWith("budget_") || filename.startsWith("youtube_");
+    const track = filename.startsWith("blog_") ? "blog" : independentTrack ? undefined : "ad";
     if (date && track) await recordRun(date, track, "failed", (e as Error).message);
     console.error(`[supabase-sync] 실패: ${(e as Error).message}`);
     process.exit(1);

@@ -15,7 +15,8 @@
   "왜 스크래핑을 안 쓰는가" 참고.
 - **출력**: 공유 Supabase 프로젝트의 `keywords`, `keyword_daily_metrics`, `competitors`,
   `ad_spend_estimates`, `ad_account_daily_stats`, `blog_posts`, `blog_sov_daily`, `posting_cadence`,
-  `pipeline_runs`, `daily_reports`, `alerts`, `news_articles`, `budget_bids` 테이블. 로컬 `data/raw/`(원본 스냅샷)·
+  `pipeline_runs`, `daily_reports`, `alerts`, `news_articles`, `budget_bids`,
+  `youtube_channel_stats`, `youtube_videos` 테이블. 로컬 `data/raw/`(원본 스냅샷)·
   `data/processed/`(정제본)·`output/`(자연어 리포트 md)도 감사/백업용으로 남긴다.
 - **역할 분담**: 결정적 단계(API 호출, 계산, DB 쓰기)는 `scripts/`의 TypeScript 코드가 하고,
   판단이 필요한 단계(이상치 서술, 리포트 작성, 콘텐츠 톤 분석)는 이 파일과
@@ -69,9 +70,10 @@
 - **O1**: `.claude/agents/ad-monitor/AGENT.md` 지시대로 ad-monitor(A0~A8)를 먼저 실행한다.
   끝나면 `.claude/agents/blog-monitor/AGENT.md` 지시대로 blog-monitor(B1~B8)를 실행한다.
   (두 트랙은 서로 독립이지만, 매일 실행에서는 순차로 진행해 리소스 경합을 피한다.) 마지막으로
-  `.claude/agents/news-monitor/AGENT.md` 지시대로 news-monitor(N1~N4, 뉴스+예산)를 실행한다 — 이 트랙은
-  키워드/경쟁사 데이터와 무관한 완전히 독립적인 트랙이라 A/B 트랙의 성공 여부와 상관없이
-  항상 실행한다.
+  `.claude/agents/news-monitor/AGENT.md` 지시대로 news-monitor(N1~N4, 뉴스+예산)를, 그다음
+  `.claude/agents/youtube-monitor/AGENT.md` 지시대로 youtube-monitor(Y1~Y2)를 실행한다 —
+  이 두 트랙은 키워드/경쟁사 데이터와 무관한 완전히 독립적인 트랙이라 A/B 트랙의 성공
+  여부와 상관없이 항상 실행한다.
 - **O2**: 오늘 날짜의 `pipeline_runs`에서 `track='ad'`와 `track='blog'`가 **둘 다** `status='success'`인
   경우에만 통합 리포트를 생성한다. `report-formatter` 스킬로 두 트랙의 리포트 내용을 종합해
   `daily_reports`(`track='combined'`)에 upsert하고 `output/daily/<날짜>_daily_combined.md`로 저장한다.
@@ -92,6 +94,7 @@
   agents/ad-monitor/       Track A 서브에이전트
   agents/blog-monitor/     Track B 서브에이전트
   agents/news-monitor/     Track N 서브에이전트
+  agents/youtube-monitor/  Track Y 서브에이전트
 config/
   competitors.yaml         경쟁사 목록(수동 등록, 5~10곳)
   keyword_exclude.yaml     자동 동기화 키워드 중 제외 목록(선택)
@@ -134,6 +137,8 @@ scripts/
 | `daily_reports` | `date,report_type,track` |
 | `news_articles` | `link` |
 | `budget_bids` | `bid_no,bid_ord` |
+| `youtube_channel_stats` | `date` |
+| `youtube_videos` | `video_id` |
 
 (`competitors`는 unique 제약이 없어 이름 기준 "조회 후 없으면 생성"으로 중복을 막는다 —
 `scripts/lib/supabase-sync.ts::ensureCompetitors` 참고. `alerts`는 같은 날 여러 건이 허용되므로
@@ -171,7 +176,9 @@ scripts/
 별개, searchad.naver.com에서 발급), `NAVER_OPENAPI_*`는 블로그·뉴스 검색 API(NAVER API HUB,
 네이버클라우드플랫폼 콘솔에서 별도 애플리케이션 등록 필요) — 서로 다른 두 세트의 키다.
 `G2B_SERVICE_KEY`는 data.go.kr "조달청_나라장터 입찰공고정보서비스" 활용신청으로 발급받은
-일반 인증키(Encoding)를 **그대로**(재인코딩하지 않고) 붙여넣는다.
+일반 인증키(Encoding)를 **그대로**(재인코딩하지 않고) 붙여넣는다. `YOUTUBE_API_KEY`는
+Google Cloud Console에서 "YouTube Data API v3"를 사용 설정하고 발급받은 API 키(OAuth
+불필요), `YOUTUBE_CHANNEL_HANDLE`은 `@` 없이 채널 핸들만(예: `AIRPASS_XR`).
 
 ## 트러블슈팅
 
@@ -207,11 +214,13 @@ npm run calculate:sov
 npm run estimate:spend
 npm run fetch:news
 npm run fetch:budget
+npm run fetch:youtube
 
 # 최종 반영 (검증 통과한 data/processed/*.json에 대해)
 npm run sync:supabase -- data/processed/ads_YYYY-MM-DD.json
 npm run sync:supabase -- data/processed/news_YYYY-MM-DD.json
 npm run sync:supabase -- data/processed/budget_YYYY-MM-DD.json
+npm run sync:supabase -- data/processed/youtube_YYYY-MM-DD.json
 
 # 전체 파이프라인 (claude -p 헤드리스)
 npm run run:daily

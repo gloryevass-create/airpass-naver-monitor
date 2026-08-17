@@ -142,6 +142,27 @@ const ProcessedBudgetSchema = z.object({
   ),
 });
 
+const ProcessedYoutubeSchema = z.object({
+  date: z.string().regex(/^\d{4}-\d{2}-\d{2}$/, "date는 YYYY-MM-DD 형식이어야 합니다"),
+  channel: z.object({
+    subscriber_count: z.number().nonnegative(),
+    view_count: z.number().nonnegative(),
+    video_count: z.number().nonnegative(),
+  }),
+  videos: z.array(
+    z.object({
+      video_id: z.string().min(1),
+      title: z.string().min(1),
+      published_at: z.string().nullable().optional(),
+      view_count: z.number().nonnegative(),
+      like_count: z.number().nonnegative(),
+      comment_count: z.number().nonnegative(),
+      duration_seconds: z.number().nullable().optional(),
+      thumbnail_url: z.string().nullable().optional(),
+    })
+  ),
+});
+
 function main() {
   const filePath = process.argv[2];
   if (!filePath) {
@@ -156,7 +177,9 @@ function main() {
       ? ProcessedNewsSchema
       : filename.startsWith("budget_")
         ? ProcessedBudgetSchema
-        : ProcessedAdsSchema;
+        : filename.startsWith("youtube_")
+          ? ProcessedYoutubeSchema
+          : ProcessedAdsSchema;
 
   let json: unknown;
   try {
