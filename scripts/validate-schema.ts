@@ -109,6 +109,19 @@ const ProcessedBlogSchema = z.object({
   report: ReportSchema.optional(),
 });
 
+const ProcessedNewsSchema = z.object({
+  date: z.string().regex(/^\d{4}-\d{2}-\d{2}$/, "date는 YYYY-MM-DD 형식이어야 합니다"),
+  articles: z.array(
+    z.object({
+      keyword: z.string().min(1),
+      title: z.string().min(1),
+      link: z.string().url(),
+      description: z.string().nullable().optional(),
+      published_at: z.string().nullable().optional(),
+    })
+  ),
+});
+
 function main() {
   const filePath = process.argv[2];
   if (!filePath) {
@@ -117,7 +130,11 @@ function main() {
   }
 
   const filename = basename(filePath);
-  const schema = filename.startsWith("blog_") ? ProcessedBlogSchema : ProcessedAdsSchema;
+  const schema = filename.startsWith("blog_")
+    ? ProcessedBlogSchema
+    : filename.startsWith("news_")
+      ? ProcessedNewsSchema
+      : ProcessedAdsSchema;
 
   let json: unknown;
   try {

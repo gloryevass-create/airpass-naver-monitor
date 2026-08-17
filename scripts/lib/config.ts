@@ -20,3 +20,10 @@ export function loadExcludedKeywords(): string[] {
   };
   return raw.exclude_keywords ?? [];
 }
+
+export function loadNewsKeywords(): string[] {
+  const raw = parse(readFileSync("config/news_keywords.yaml", "utf-8")) as {
+    keywords: string[];
+  };
+  return raw.keywords ?? [];
+}

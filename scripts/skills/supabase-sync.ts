@@ -13,6 +13,7 @@ import {
   upsertBlogPosts,
   upsertBlogSovDaily,
   upsertPostingCadence,
+  upsertNewsArticles,
   insertAlerts,
   upsertDailyReport,
 } from "../lib/supabase-sync";
@@ -59,6 +60,17 @@ type ProcessedBlog = {
   cadence: { competitor_name: string; avg_interval_days?: number | null; last_post_at?: string | null; post_count_30d: number }[];
   alerts?: { severity: "info" | "warning" | "critical"; category: string; message: string; evidence_ref: string }[];
   report?: { report_type: "daily" | "weekly" | "monthly"; title: string; content_md: string; source_refs: string[] };
+};
+
+type ProcessedNews = {
+  date: string;
+  articles: {
+    keyword: string;
+    title: string;
+    link: string;
+    description?: string | null;
+    published_at?: string | null;
+  }[];
 };
 
 /** A8: Track A(ads_*.json) 결과를 Supabase에 반영. 이미 .claude/settings.json 훅에서
@@ -187,10 +199,28 @@ async function syncBlog(filePath: string) {
   console.log(`[supabase-sync] blog 트랙 동기화 완료 (${data.date})`);
 }
 
+/** N2: 뉴스 모니터링 결과를 Supabase에 반영. keywords/competitors와 무관한 독립 데이터라
+ * pipeline_runs(track 체크 제약이 'ad'/'blog'만 허용)는 건드리지 않고 콘솔 로그로만 기록한다. */
+async function syncNews(filePath: string) {
+  const data = JSON.parse(readFileSync(filePath, "utf-8")) as ProcessedNews;
+
+  const rows = data.articles.map((a) => ({
+    keyword: a.keyword,
+    title: a.title,
+    link: a.link,
+    description: a.description ?? null,
+    published_at: a.published_at ?? null,
+    collected_at: data.date,
+  }));
+  await upsertNewsArticles(rows);
+
+  console.log(`[supabase-sync] news 트랙 동기화 완료 (${data.date}) — ${rows.length}건`);
+}
+
 async function main() {
   const filePath = process.argv[2];
   if (!filePath) {
-    console.error("사용법: tsx scripts/skills/supabase-sync.ts <data/processed/{ads,blog}_YYYY-MM-DD.json>");
+    console.error("사용법: tsx scripts/skills/supabase-sync.ts <data/processed/{ads,blog,news}_YYYY-MM-DD.json>");
     process.exit(1);
   }
 
@@ -198,13 +228,15 @@ async function main() {
   try {
     if (filename.startsWith("blog_")) {
       await syncBlog(filePath);
+    } else if (filename.startsWith("news_")) {
+      await syncNews(filePath);
     } else {
       await syncAds(filePath);
     }
   } catch (e) {
     const date = filename.match(/\d{4}-\d{2}-\d{2}/)?.[0];
-    const track = filename.startsWith("blog_") ? "blog" : "ad";
-    if (date) await recordRun(date, track, "failed", (e as Error).message);
+    const track = filename.startsWith("blog_") ? "blog" : filename.startsWith("news_") ? undefined : "ad";
+    if (date && track) await recordRun(date, track, "failed", (e as Error).message);
     console.error(`[supabase-sync] 실패: ${(e as Error).message}`);
     process.exit(1);
   }

@@ -6,8 +6,8 @@
         "hooks": [
           {
             "type": "command",
-            "command": "jq -r '.tool_input.file_path // .tool_response.filePath // empty' | { read -r f; case \"$f\" in *data/processed/ads_*.json) npx tsx scripts/validate-schema.ts \"$f\" || exit 2 ;; esac; }",
-            "statusMessage": "data/processed/ads_*.json 스키마 검증 중..."
+            "command": "jq -r '.tool_input.file_path // .tool_response.filePath // empty' | { read -r f; case \"$f\" in *data/processed/ads_*.json|*data/processed/news_*.json) npx tsx scripts/validate-schema.ts \"$f\" || exit 2 ;; esac; }",
+            "statusMessage": "data/processed/{ads,news}_*.json 스키마 검증 중..."
           },
           {
             "type": "command",

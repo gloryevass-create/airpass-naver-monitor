@@ -46,3 +46,34 @@ export async function searchBlog(query: string, display = 10): Promise<BlogSearc
     return json.items;
   });
 }
+
+export type NewsSearchItem = {
+  title: string; // <b> 태그 포함된 HTML 조각일 수 있음
+  originallink: string;
+  link: string; // 네이버 뉴스 자체 링크(있으면). 없을 수도 있어 originallink를 우선 쓴다.
+  description: string;
+  pubDate: string; // RFC822, 예: "Mon, 17 Aug 2026 09:00:00 +0900"
+};
+
+/** 네이버 뉴스 검색(NAVER API HUB) — searchBlog와 동일한 인증 방식. 뉴스 모니터링 메뉴에 쓰인다. */
+export async function searchNews(query: string, display = 20): Promise<NewsSearchItem[]> {
+  const url = new URL("/search/v1/news", BASE_URL);
+  url.searchParams.set("query", query);
+  url.searchParams.set("display", String(display));
+  url.searchParams.set("sort", "date"); // 정책 뉴스는 최신순이 정확도순보다 유용하다
+
+  return withRetry(async () => {
+    const res = await fetch(url, {
+      headers: {
+        "X-NCP-APIGW-API-KEY-ID": env.naverOpenApiClientId,
+        "X-NCP-APIGW-API-KEY": env.naverOpenApiClientSecret,
+      },
+    });
+    if (!res.ok) {
+      const text = await res.text().catch(() => "");
+      throw new Error(`뉴스 검색 API 실패 (${res.status}): ${text}`);
+    }
+    const json = (await res.json()) as { items: NewsSearchItem[] };
+    return json.items;
+  });
+}

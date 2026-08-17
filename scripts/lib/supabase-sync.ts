@@ -137,6 +137,12 @@ export async function insertAlerts(rows: Tables["alerts"]["Insert"][]) {
   if (error) throw new Error(`alerts insert 실패: ${error.message}`);
 }
 
+export async function upsertNewsArticles(rows: Tables["news_articles"]["Insert"][]) {
+  if (rows.length === 0) return;
+  const { error } = await getSupabaseClient().from("news_articles").upsert(rows, { onConflict: "link" });
+  if (error) throw new Error(`news_articles upsert 실패: ${error.message}`);
+}
+
 export async function upsertDailyReport(row: Tables["daily_reports"]["Insert"]) {
   const { error } = await getSupabaseClient()
     .from("daily_reports")
