@@ -184,6 +184,43 @@ const ProcessedEventsSchema = z.object({
   ),
 });
 
+const ProcessedYouthFacilitiesSchema = z.object({
+  date: z.string().regex(/^\d{4}-\d{2}-\d{2}$/, "date는 YYYY-MM-DD 형식이어야 합니다"),
+  facilities: z.array(
+    z.object({
+      facilityName: z.string().min(1),
+      representativeName: z.string().nullable(),
+      operatingBody: z.string().nullable(),
+      operationMode: z.string().nullable(),
+      foundationSubject: z.string().nullable(),
+      foundationOrgDetail: z.string().nullable(),
+      installationType: z.string().nullable(),
+      facilityType: z.string().nullable(),
+      provinceName: z.string().nullable(),
+      districtName: z.string().nullable(),
+      roadAddress: z.string().nullable(),
+      lotAddress: z.string().nullable(),
+      latitude: z.number().nullable(),
+      longitude: z.number().nullable(),
+      homepageUrl: z.string().nullable(),
+      phoneNumber: z.string().nullable(),
+      faxNumber: z.string().nullable(),
+      email: z.string().nullable(),
+      operatingHours: z.string().nullable(),
+      holidayInfo: z.string().nullable(),
+      hasParking: z.boolean().nullable(),
+      capacityCount: z.number().nullable(),
+      overnightCapacityCount: z.number().nullable(),
+      stayCapacityCount: z.number().nullable(),
+      companionCapacityCount: z.number().nullable(),
+      firstRegisteredDate: z.string().nullable(),
+      referenceDate: z.string().nullable(),
+      isExposed: z.boolean().nullable(),
+      remarks: z.string().nullable(),
+    })
+  ),
+});
+
 function main() {
   const filePath = process.argv[2];
   if (!filePath) {
@@ -202,7 +239,9 @@ function main() {
           ? ProcessedYoutubeSchema
           : filename.startsWith("events_")
             ? ProcessedEventsSchema
-            : ProcessedAdsSchema;
+            : filename.startsWith("youthfacilities_")
+              ? ProcessedYouthFacilitiesSchema
+              : ProcessedAdsSchema;
 
   let json: unknown;
   try {

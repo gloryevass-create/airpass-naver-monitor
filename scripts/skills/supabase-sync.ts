@@ -18,6 +18,7 @@ import {
   upsertYoutubeVideos,
   upsertTeamEvents,
   deleteStaleTeamEvents,
+  replaceYouthFacilities,
   insertAlerts,
   upsertDailyReport,
 } from "../lib/supabase-sync";
@@ -111,6 +112,41 @@ type ProcessedEvents = {
     assignees: string[];
     attendees: string[];
     notionUrl: string;
+  }[];
+};
+
+type ProcessedYouthFacilities = {
+  date: string;
+  facilities: {
+    facilityName: string;
+    representativeName: string | null;
+    operatingBody: string | null;
+    operationMode: string | null;
+    foundationSubject: string | null;
+    foundationOrgDetail: string | null;
+    installationType: string | null;
+    facilityType: string | null;
+    provinceName: string | null;
+    districtName: string | null;
+    roadAddress: string | null;
+    lotAddress: string | null;
+    latitude: number | null;
+    longitude: number | null;
+    homepageUrl: string | null;
+    phoneNumber: string | null;
+    faxNumber: string | null;
+    email: string | null;
+    operatingHours: string | null;
+    holidayInfo: string | null;
+    hasParking: boolean | null;
+    capacityCount: number | null;
+    overnightCapacityCount: number | null;
+    stayCapacityCount: number | null;
+    companionCapacityCount: number | null;
+    firstRegisteredDate: string | null;
+    referenceDate: string | null;
+    isExposed: boolean | null;
+    remarks: string | null;
   }[];
 };
 
@@ -357,11 +393,52 @@ async function syncEvents(filePath: string) {
   console.log(`[supabase-sync] events 트랙 동기화 완료 (${data.date}) — ${rows.length}건`);
 }
 
+/** F2: 청소년관련기관DB 결과를 Supabase에 반영. 참고용 스냅샷이라 pipeline_runs는
+ * 건드리지 않고, 매번 delete-all-then-insert로 통째로 교체한다. */
+async function syncYouthFacilities(filePath: string) {
+  const data = JSON.parse(readFileSync(filePath, "utf-8")) as ProcessedYouthFacilities;
+
+  const rows = data.facilities.map((f) => ({
+    facility_name: f.facilityName,
+    representative_name: f.representativeName,
+    operating_body: f.operatingBody,
+    operation_mode: f.operationMode,
+    foundation_subject: f.foundationSubject,
+    foundation_org_detail: f.foundationOrgDetail,
+    installation_type: f.installationType,
+    facility_type: f.facilityType,
+    province_name: f.provinceName,
+    district_name: f.districtName,
+    road_address: f.roadAddress,
+    lot_address: f.lotAddress,
+    latitude: f.latitude,
+    longitude: f.longitude,
+    homepage_url: f.homepageUrl,
+    phone_number: f.phoneNumber,
+    fax_number: f.faxNumber,
+    email: f.email,
+    operating_hours: f.operatingHours,
+    holiday_info: f.holidayInfo,
+    has_parking: f.hasParking,
+    capacity_count: f.capacityCount,
+    overnight_capacity_count: f.overnightCapacityCount,
+    stay_capacity_count: f.stayCapacityCount,
+    companion_capacity_count: f.companionCapacityCount,
+    first_registered_date: f.firstRegisteredDate,
+    reference_date: f.referenceDate,
+    is_exposed: f.isExposed,
+    remarks: f.remarks,
+  }));
+  await replaceYouthFacilities(rows);
+
+  console.log(`[supabase-sync] youthfacilities 트랙 동기화 완료 (${data.date}) — ${rows.length}건`);
+}
+
 async function main() {
   const filePath = process.argv[2];
   if (!filePath) {
     console.error(
-      "사용법: tsx scripts/skills/supabase-sync.ts <data/processed/{ads,blog,news,budget,youtube,events}_YYYY-MM-DD.json>"
+      "사용법: tsx scripts/skills/supabase-sync.ts <data/processed/{ads,blog,news,budget,youtube,events,youthfacilities}_YYYY-MM-DD.json>"
     );
     process.exit(1);
   }
@@ -378,6 +455,8 @@ async function main() {
       await syncYoutube(filePath);
     } else if (filename.startsWith("events_")) {
       await syncEvents(filePath);
+    } else if (filename.startsWith("youthfacilities_")) {
+      await syncYouthFacilities(filePath);
     } else {
       await syncAds(filePath);
     }
@@ -387,7 +466,8 @@ async function main() {
       filename.startsWith("news_") ||
       filename.startsWith("budget_") ||
       filename.startsWith("youtube_") ||
-      filename.startsWith("events_");
+      filename.startsWith("events_") ||
+      filename.startsWith("youthfacilities_");
     const track = filename.startsWith("blog_") ? "blog" : independentTrack ? undefined : "ad";
     if (date && track) await recordRun(date, track, "failed", (e as Error).message);
     console.error(`[supabase-sync] 실패: ${(e as Error).message}`);

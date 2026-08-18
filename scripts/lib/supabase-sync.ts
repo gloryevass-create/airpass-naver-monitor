@@ -184,4 +184,24 @@ export async function fetchCompetitorsFromDb() {
   return data ?? [];
 }
 
+/** 참고용 스냅샷 테이블이라 이력을 누적하지 않고 매번 통째로 교체한다(delete-all →
+ * bulk insert). 자연키가 없는 공공데이터(같은 시설명이 여러 지역에 존재 가능)라
+ * upsert onConflict를 쓸 수 없다. */
+export async function replaceYouthFacilities(rows: Tables["youth_facilities"]["Insert"][]) {
+  const supabase = getSupabaseClient();
+  const { error: deleteError } = await supabase
+    .from("youth_facilities")
+    .delete()
+    .not("id", "is", null);
+  if (deleteError) throw new Error(`youth_facilities 초기화 실패: ${deleteError.message}`);
+
+  if (rows.length === 0) return;
+  const BATCH_SIZE = 500;
+  for (let i = 0; i < rows.length; i += BATCH_SIZE) {
+    const batch = rows.slice(i, i + BATCH_SIZE);
+    const { error } = await supabase.from("youth_facilities").insert(batch);
+    if (error) throw new Error(`youth_facilities insert 실패: ${error.message}`);
+  }
+}
+
 export type { Json };
