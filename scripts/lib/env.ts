@@ -55,4 +55,7 @@ export const env = {
   get disabilitySportsServiceKey() {
     return required("DISABILITY_SPORTS_SERVICE_KEY");
   },
+  get disabilityWelfareServiceKey() {
+    return required("DISABILITY_WELFARE_SERVICE_KEY");
+  },
 };

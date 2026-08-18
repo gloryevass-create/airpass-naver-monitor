@@ -21,6 +21,7 @@ import {
   replaceYouthFacilities,
   replaceDisabilityOrganizations,
   replaceDisabilitySportsFacilities,
+  replaceDisabilityWelfareCenters,
   insertAlerts,
   upsertDailyReport,
 } from "../lib/supabase-sync";
@@ -181,6 +182,21 @@ type ProcessedDisabilitySports = {
     homepageUrl: string | null;
     hasVoucherProgram: boolean | null;
     hasBandabiFacility: boolean | null;
+  }[];
+};
+
+type ProcessedDisabilityWelfare = {
+  date: string;
+  centers: {
+    facilityName: string;
+    facilityType: string | null;
+    provinceName: string | null;
+    roadAddress: string | null;
+    latitude: number | null;
+    longitude: number | null;
+    operatingStatus: string | null;
+    establishmentDate: string | null;
+    welfareFacilityId: string | null;
   }[];
 };
 
@@ -512,11 +528,32 @@ async function syncDisabilitySports(filePath: string) {
   console.log(`[supabase-sync] disabilitysports 트랙 동기화 완료 (${data.date}) — ${rows.length}건`);
 }
 
+/** I2: 장애인복지관류 시설 결과를 Supabase에 반영. 참고용 스냅샷이라 pipeline_runs는
+ * 건드리지 않고, 매번 delete-all-then-insert로 통째로 교체한다. */
+async function syncDisabilityWelfare(filePath: string) {
+  const data = JSON.parse(readFileSync(filePath, "utf-8")) as ProcessedDisabilityWelfare;
+
+  const rows = data.centers.map((c) => ({
+    facility_name: c.facilityName,
+    facility_type: c.facilityType,
+    province_name: c.provinceName,
+    road_address: c.roadAddress,
+    latitude: c.latitude,
+    longitude: c.longitude,
+    operating_status: c.operatingStatus,
+    establishment_date: c.establishmentDate,
+    welfare_facility_id: c.welfareFacilityId,
+  }));
+  await replaceDisabilityWelfareCenters(rows);
+
+  console.log(`[supabase-sync] disabilitywelfare 트랙 동기화 완료 (${data.date}) — ${rows.length}건`);
+}
+
 async function main() {
   const filePath = process.argv[2];
   if (!filePath) {
     console.error(
-      "사용법: tsx scripts/skills/supabase-sync.ts <data/processed/{ads,blog,news,budget,youtube,events,youthfacilities,disabilityorgs,disabilitysports}_YYYY-MM-DD.json>"
+      "사용법: tsx scripts/skills/supabase-sync.ts <data/processed/{ads,blog,news,budget,youtube,events,youthfacilities,disabilityorgs,disabilitysports,disabilitywelfare}_YYYY-MM-DD.json>"
     );
     process.exit(1);
   }
@@ -539,6 +576,8 @@ async function main() {
       await syncDisabilityOrgs(filePath);
     } else if (filename.startsWith("disabilitysports_")) {
       await syncDisabilitySports(filePath);
+    } else if (filename.startsWith("disabilitywelfare_")) {
+      await syncDisabilityWelfare(filePath);
     } else {
       await syncAds(filePath);
     }
@@ -551,7 +590,8 @@ async function main() {
       filename.startsWith("events_") ||
       filename.startsWith("youthfacilities_") ||
       filename.startsWith("disabilityorgs_") ||
-      filename.startsWith("disabilitysports_");
+      filename.startsWith("disabilitysports_") ||
+      filename.startsWith("disabilitywelfare_");
     const track = filename.startsWith("blog_") ? "blog" : independentTrack ? undefined : "ad";
     if (date && track) await recordRun(date, track, "failed", (e as Error).message);
     console.error(`[supabase-sync] 실패: ${(e as Error).message}`);
