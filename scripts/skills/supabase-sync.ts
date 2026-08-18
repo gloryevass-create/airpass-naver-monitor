@@ -17,6 +17,8 @@ import {
   upsertBudgetBids,
   upsertYoutubeChannelStats,
   upsertYoutubeVideos,
+  upsertTeamEvents,
+  deleteStaleTeamEvents,
   insertAlerts,
   upsertDailyReport,
 } from "../lib/supabase-sync";
@@ -91,6 +93,25 @@ type ProcessedBudget = {
     notice_date?: string | null;
     opening_date?: string | null;
     detail_url?: string | null;
+  }[];
+};
+
+type ProcessedEvents = {
+  date: string;
+  events: {
+    notionPageId: string;
+    title: string;
+    dateStart: string;
+    dateEnd: string | null;
+    isDatetime: boolean;
+    category: string | null;
+    tags: string[];
+    target: string | null;
+    location: string | null;
+    content: string | null;
+    assignees: string[];
+    attendees: string[];
+    notionUrl: string;
   }[];
 };
 
@@ -309,11 +330,39 @@ async function syncYoutube(filePath: string) {
   console.log(`[supabase-sync] youtube 트랙 동기화 완료 (${data.date}) — 영상 ${videoRows.length}건`);
 }
 
+/** E2: 팀 노션 일정 결과를 Supabase에 반영. news/budget/youtube와 마찬가지로 독립
+ * 데이터라 pipeline_runs는 건드리지 않는다. Notion에서 삭제된 항목은 오늘 동기화에
+ * 없는 notion_page_id로 판단해 함께 삭제한다(원본이 Notion이므로 그대로 미러링). */
+async function syncEvents(filePath: string) {
+  const data = JSON.parse(readFileSync(filePath, "utf-8")) as ProcessedEvents;
+
+  const rows = data.events.map((e) => ({
+    notion_page_id: e.notionPageId,
+    title: e.title,
+    date_start: e.dateStart,
+    date_end: e.dateEnd,
+    is_datetime: e.isDatetime,
+    category: e.category,
+    tags: e.tags,
+    target: e.target,
+    location: e.location,
+    content: e.content,
+    assignees: e.assignees,
+    attendees: e.attendees,
+    notion_url: e.notionUrl,
+    updated_at: new Date().toISOString(),
+  }));
+  await upsertTeamEvents(rows);
+  if (rows.length > 0) await deleteStaleTeamEvents(rows.map((r) => r.notion_page_id));
+
+  console.log(`[supabase-sync] events 트랙 동기화 완료 (${data.date}) — ${rows.length}건`);
+}
+
 async function main() {
   const filePath = process.argv[2];
   if (!filePath) {
     console.error(
-      "사용법: tsx scripts/skills/supabase-sync.ts <data/processed/{ads,blog,news,budget,youtube}_YYYY-MM-DD.json>"
+      "사용법: tsx scripts/skills/supabase-sync.ts <data/processed/{ads,blog,news,budget,youtube,events}_YYYY-MM-DD.json>"
     );
     process.exit(1);
   }
@@ -328,13 +377,18 @@ async function main() {
       await syncBudget(filePath);
     } else if (filename.startsWith("youtube_")) {
       await syncYoutube(filePath);
+    } else if (filename.startsWith("events_")) {
+      await syncEvents(filePath);
     } else {
       await syncAds(filePath);
     }
   } catch (e) {
     const date = filename.match(/\d{4}-\d{2}-\d{2}/)?.[0];
     const independentTrack =
-      filename.startsWith("news_") || filename.startsWith("budget_") || filename.startsWith("youtube_");
+      filename.startsWith("news_") ||
+      filename.startsWith("budget_") ||
+      filename.startsWith("youtube_") ||
+      filename.startsWith("events_");
     const track = filename.startsWith("blog_") ? "blog" : independentTrack ? undefined : "ad";
     if (date && track) await recordRun(date, track, "failed", (e as Error).message);
     console.error(`[supabase-sync] 실패: ${(e as Error).message}`);

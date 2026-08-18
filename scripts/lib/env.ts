@@ -40,4 +40,10 @@ export const env = {
   get youtubeChannelHandle() {
     return required("YOUTUBE_CHANNEL_HANDLE");
   },
+  get notionToken() {
+    return required("NOTION_TOKEN");
+  },
+  get notionEventsDatabaseId() {
+    return required("NOTION_EVENTS_DATABASE_ID");
+  },
 };

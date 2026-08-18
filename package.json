@@ -15,6 +15,7 @@
     "fetch:news": "tsx --env-file=.env scripts/skills/naver-news-fetch.ts",
     "fetch:budget": "tsx --env-file=.env scripts/skills/g2b-budget-fetch.ts",
     "fetch:youtube": "tsx --env-file=.env scripts/skills/youtube-fetch.ts",
+    "fetch:events": "tsx --env-file=.env scripts/skills/notion-events-fetch.ts",
     "analyze:cadence": "tsx --env-file=.env scripts/skills/posting-cadence-analyzer.ts",
     "calculate:sov": "tsx --env-file=.env scripts/skills/sov-calculator.ts",
     "sync:supabase": "tsx --env-file=.env scripts/skills/supabase-sync.ts",

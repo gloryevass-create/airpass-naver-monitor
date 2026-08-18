@@ -163,6 +163,27 @@ const ProcessedYoutubeSchema = z.object({
   ),
 });
 
+const ProcessedEventsSchema = z.object({
+  date: z.string().regex(/^\d{4}-\d{2}-\d{2}$/, "date는 YYYY-MM-DD 형식이어야 합니다"),
+  events: z.array(
+    z.object({
+      notionPageId: z.string().min(1),
+      title: z.string().min(1),
+      dateStart: z.string().min(1),
+      dateEnd: z.string().nullable(),
+      isDatetime: z.boolean(),
+      category: z.string().nullable(),
+      tags: z.array(z.string()),
+      target: z.string().nullable(),
+      location: z.string().nullable(),
+      content: z.string().nullable(),
+      assignees: z.array(z.string()),
+      attendees: z.array(z.string()),
+      notionUrl: z.string().min(1),
+    })
+  ),
+});
+
 function main() {
   const filePath = process.argv[2];
   if (!filePath) {
@@ -179,7 +200,9 @@ function main() {
         ? ProcessedBudgetSchema
         : filename.startsWith("youtube_")
           ? ProcessedYoutubeSchema
-          : ProcessedAdsSchema;
+          : filename.startsWith("events_")
+            ? ProcessedEventsSchema
+            : ProcessedAdsSchema;
 
   let json: unknown;
   try {
