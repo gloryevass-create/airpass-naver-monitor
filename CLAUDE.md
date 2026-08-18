@@ -17,7 +17,7 @@
   `ad_spend_estimates`, `ad_account_daily_stats`, `blog_posts`, `blog_sov_daily`, `posting_cadence`,
   `pipeline_runs`, `daily_reports`, `alerts`, `news_articles`, `budget_bids`,
   `youtube_channel_stats`, `youtube_videos`, `team_events`, `youth_facilities`,
-  `disability_organizations` 테이블. 로컬 `data/raw/`(원본 스냅샷)·
+  `disability_organizations`, `disability_sports_facilities` 테이블. 로컬 `data/raw/`(원본 스냅샷)·
   `data/processed/`(정제본)·`output/`(자연어 리포트 md)도 감사/백업용으로 남긴다.
 - **역할 분담**: 결정적 단계(API 호출, 계산, DB 쓰기)는 `scripts/`의 TypeScript 코드가 하고,
   판단이 필요한 단계(이상치 서술, 리포트 작성, 콘텐츠 톤 분석)는 이 파일과
@@ -75,8 +75,10 @@
   `.claude/agents/youtube-monitor/AGENT.md` 지시대로 youtube-monitor(Y1~Y2)를, 마지막으로
   `.claude/agents/calendar-monitor/AGENT.md` 지시대로 calendar-monitor(E1~E2, 팀 노션 일정)를,
   그다음 `.claude/agents/youth-facility-monitor/AGENT.md` 지시대로 youth-facility-monitor(F1~F2,
-  청소년관련기관)를, 마지막으로 `.claude/agents/disability-org-monitor/AGENT.md` 지시대로
-  disability-org-monitor(G1~G2, 장애인관련기관)를 실행한다 — 이 다섯 트랙은 키워드/경쟁사 데이터와 무관한 완전히 독립적인 트랙이라 A/B
+  청소년관련기관)를, `.claude/agents/disability-org-monitor/AGENT.md` 지시대로
+  disability-org-monitor(G1~G2, 장애인관련기관)를, 마지막으로
+  `.claude/agents/disability-sports-monitor/AGENT.md` 지시대로 disability-sports-monitor(H1~H2,
+  장애인체육시설)를 실행한다 — 이 여섯 트랙은 키워드/경쟁사 데이터와 무관한 완전히 독립적인 트랙이라 A/B
   트랙의 성공 여부와 상관없이 항상 실행한다.
 - **O2**: 오늘 날짜의 `pipeline_runs`에서 `track='ad'`와 `track='blog'`가 **둘 다** `status='success'`인
   경우에만 통합 리포트를 생성한다. `report-formatter` 스킬로 두 트랙의 리포트 내용을 종합해
@@ -102,6 +104,7 @@
   agents/calendar-monitor/ Track E 서브에이전트
   agents/youth-facility-monitor/ Track F 서브에이전트
   agents/disability-org-monitor/  Track G 서브에이전트
+  agents/disability-sports-monitor/ Track H 서브에이전트
 config/
   keyword_exclude.yaml     자동 동기화 키워드 중 제외 목록(선택)
 data/
@@ -148,6 +151,7 @@ scripts/
 | `team_events` | `notion_page_id` (Notion에서 삭제된 항목은 오늘 동기화에 없는 `notion_page_id`로 판단해 함께 삭제) |
 | `youth_facilities` | 자연키 없음 — 매번 delete-all-then-insert로 통째로 교체 |
 | `disability_organizations` | 자연키 없음 — 매번 delete-all-then-insert로 통째로 교체 |
+| `disability_sports_facilities` | 자연키 없음 — 매번 delete-all-then-insert로 통째로 교체 |
 
 (`competitors`는 이제 `name`에 unique 제약이 있다 — 마이그레이션 0013 이후 대시보드가 직접
 insert하므로 코드 쪽 "조회 후 없으면 생성" 우회 로직(`ensureCompetitors`)은 제거했다.
@@ -211,6 +215,9 @@ Airpass전략기획 워크스페이스에 만든 Notion 내부 통합(internal i
 같은 계정에서 서비스별로 별도 활용신청만 하면 됨). `DISABILITY_ORG_SERVICE_KEY`는 공공데이터포털
 "전국장애인단체표준데이터"(tn_pubr_public_disabled_orgs_api) 활용신청(자동승인)으로 발급받은
 일반 인증키 — 이 API에는 "시설유형" 필드가 없어(전부 "단체") 시설유형별 통계는 만들지 않는다.
+`DISABILITY_SPORTS_SERVICE_KEY`는 공공데이터포털 "대한장애인체육회_장애인전용체육시설"
+(odcloud.kr 표준 API, namespace 15071029/v1) 활용신청으로 발급받은 일반 인증키 — 이 API도
+"시설유형" 필드가 없다(전부 "장애인전용체육시설").
 
 ## 트러블슈팅
 
@@ -250,6 +257,7 @@ npm run fetch:youtube
 npm run fetch:events
 npm run fetch:youth-facilities
 npm run fetch:disability-orgs
+npm run fetch:disability-sports
 
 # 최종 반영 (검증 통과한 data/processed/*.json에 대해)
 npm run sync:supabase -- data/processed/ads_YYYY-MM-DD.json
@@ -259,6 +267,7 @@ npm run sync:supabase -- data/processed/youtube_YYYY-MM-DD.json
 npm run sync:supabase -- data/processed/events_YYYY-MM-DD.json
 npm run sync:supabase -- data/processed/youthfacilities_YYYY-MM-DD.json
 npm run sync:supabase -- data/processed/disabilityorgs_YYYY-MM-DD.json
+npm run sync:supabase -- data/processed/disabilitysports_YYYY-MM-DD.json
 
 # 전체 파이프라인 (claude -p 헤드리스)
 npm run run:daily

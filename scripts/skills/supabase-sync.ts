@@ -20,6 +20,7 @@ import {
   deleteStaleTeamEvents,
   replaceYouthFacilities,
   replaceDisabilityOrganizations,
+  replaceDisabilitySportsFacilities,
   insertAlerts,
   upsertDailyReport,
 } from "../lib/supabase-sync";
@@ -166,6 +167,20 @@ type ProcessedDisabilityOrgs = {
     referenceDate: string | null;
     providerOrgCode: string | null;
     providerOrgName: string | null;
+  }[];
+};
+
+type ProcessedDisabilitySports = {
+  date: string;
+  facilities: {
+    facilityName: string;
+    provinceName: string | null;
+    districtName: string | null;
+    operatingBody: string | null;
+    phoneNumber: string | null;
+    homepageUrl: string | null;
+    hasVoucherProgram: boolean | null;
+    hasBandabiFacility: boolean | null;
   }[];
 };
 
@@ -477,11 +492,31 @@ async function syncDisabilityOrgs(filePath: string) {
   console.log(`[supabase-sync] disabilityorgs 트랙 동기화 완료 (${data.date}) — ${rows.length}건`);
 }
 
+/** H2: 장애인체육시설 결과를 Supabase에 반영. 참고용 스냅샷이라 pipeline_runs는
+ * 건드리지 않고, 매번 delete-all-then-insert로 통째로 교체한다. */
+async function syncDisabilitySports(filePath: string) {
+  const data = JSON.parse(readFileSync(filePath, "utf-8")) as ProcessedDisabilitySports;
+
+  const rows = data.facilities.map((f) => ({
+    facility_name: f.facilityName,
+    province_name: f.provinceName,
+    district_name: f.districtName,
+    operating_body: f.operatingBody,
+    phone_number: f.phoneNumber,
+    homepage_url: f.homepageUrl,
+    has_voucher_program: f.hasVoucherProgram,
+    has_bandabi_facility: f.hasBandabiFacility,
+  }));
+  await replaceDisabilitySportsFacilities(rows);
+
+  console.log(`[supabase-sync] disabilitysports 트랙 동기화 완료 (${data.date}) — ${rows.length}건`);
+}
+
 async function main() {
   const filePath = process.argv[2];
   if (!filePath) {
     console.error(
-      "사용법: tsx scripts/skills/supabase-sync.ts <data/processed/{ads,blog,news,budget,youtube,events,youthfacilities,disabilityorgs}_YYYY-MM-DD.json>"
+      "사용법: tsx scripts/skills/supabase-sync.ts <data/processed/{ads,blog,news,budget,youtube,events,youthfacilities,disabilityorgs,disabilitysports}_YYYY-MM-DD.json>"
     );
     process.exit(1);
   }
@@ -502,6 +537,8 @@ async function main() {
       await syncYouthFacilities(filePath);
     } else if (filename.startsWith("disabilityorgs_")) {
       await syncDisabilityOrgs(filePath);
+    } else if (filename.startsWith("disabilitysports_")) {
+      await syncDisabilitySports(filePath);
     } else {
       await syncAds(filePath);
     }
@@ -513,7 +550,8 @@ async function main() {
       filename.startsWith("youtube_") ||
       filename.startsWith("events_") ||
       filename.startsWith("youthfacilities_") ||
-      filename.startsWith("disabilityorgs_");
+      filename.startsWith("disabilityorgs_") ||
+      filename.startsWith("disabilitysports_");
     const track = filename.startsWith("blog_") ? "blog" : independentTrack ? undefined : "ad";
     if (date && track) await recordRun(date, track, "failed", (e as Error).message);
     console.error(`[supabase-sync] 실패: ${(e as Error).message}`);

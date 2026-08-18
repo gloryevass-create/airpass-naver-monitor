@@ -241,6 +241,22 @@ const ProcessedDisabilityOrgsSchema = z.object({
   ),
 });
 
+const ProcessedDisabilitySportsSchema = z.object({
+  date: z.string().regex(/^\d{4}-\d{2}-\d{2}$/, "date는 YYYY-MM-DD 형식이어야 합니다"),
+  facilities: z.array(
+    z.object({
+      facilityName: z.string().min(1),
+      provinceName: z.string().nullable(),
+      districtName: z.string().nullable(),
+      operatingBody: z.string().nullable(),
+      phoneNumber: z.string().nullable(),
+      homepageUrl: z.string().nullable(),
+      hasVoucherProgram: z.boolean().nullable(),
+      hasBandabiFacility: z.boolean().nullable(),
+    })
+  ),
+});
+
 function main() {
   const filePath = process.argv[2];
   if (!filePath) {
@@ -263,7 +279,9 @@ function main() {
               ? ProcessedYouthFacilitiesSchema
               : filename.startsWith("disabilityorgs_")
                 ? ProcessedDisabilityOrgsSchema
-                : ProcessedAdsSchema;
+                : filename.startsWith("disabilitysports_")
+                  ? ProcessedDisabilitySportsSchema
+                  : ProcessedAdsSchema;
 
   let json: unknown;
   try {
