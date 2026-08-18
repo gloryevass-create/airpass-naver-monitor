@@ -10,7 +10,10 @@ import { withRetry } from "./retry";
 const BASE_URL = "https://apis.data.go.kr/B554287/DisabledPersonConvenientFacility/getDisConvFaclList";
 const SEARCH_KEYWORD = "장애인";
 const NAME_FILTER = "복지관";
-const PAGE_SIZE = 100;
+// 이 API는 개발계정 일일 트래픽이 100건으로 낮다 — numOfRows를 최대치(1000)로 잡아
+// "장애인" 검색 결과(약 330건)를 한 번의 호출로 전부 받고, 페이지네이션 자체를
+// 사실상 안 타게 한다(실측 확인: 1000 요청 시 330건 전부 반환됨, 2026-08-18).
+const PAGE_SIZE = 1000;
 
 export type DisabilityWelfareCenter = {
   facilityName: string;
