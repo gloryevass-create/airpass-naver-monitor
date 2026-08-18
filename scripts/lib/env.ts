@@ -58,4 +58,7 @@ export const env = {
   get disabilityWelfareServiceKey() {
     return required("DISABILITY_WELFARE_SERVICE_KEY");
   },
+  get specialSchoolServiceKey() {
+    return required("SPECIAL_SCHOOL_SERVICE_KEY");
+  },
 };

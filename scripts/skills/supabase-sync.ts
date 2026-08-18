@@ -22,6 +22,7 @@ import {
   replaceDisabilityOrganizations,
   replaceDisabilitySportsFacilities,
   replaceDisabilityWelfareCenters,
+  replaceSpecialSchools,
   insertAlerts,
   upsertDailyReport,
 } from "../lib/supabase-sync";
@@ -197,6 +198,27 @@ type ProcessedDisabilityWelfare = {
     operatingStatus: string | null;
     establishmentDate: string | null;
     welfareFacilityId: string | null;
+  }[];
+};
+
+type ProcessedSpecialSchools = {
+  date: string;
+  schools: {
+    schoolName: string;
+    provinceName: string | null;
+    foundationType: string | null;
+    disabilityDomain: string | null;
+    principalName: string | null;
+    approvalDate: string | null;
+    openingDate: string | null;
+    principalOfficePhone: string | null;
+    adminOfficePhone: string | null;
+    teacherOfficePhone: string | null;
+    faxNumber: string | null;
+    zipCode: string | null;
+    address: string | null;
+    homepageUrl: string | null;
+    referenceDate: string | null;
   }[];
 };
 
@@ -549,11 +571,38 @@ async function syncDisabilityWelfare(filePath: string) {
   console.log(`[supabase-sync] disabilitywelfare 트랙 동기화 완료 (${data.date}) — ${rows.length}건`);
 }
 
+/** J2: 특수학교현황 결과를 Supabase에 반영. 참고용 스냅샷이라 pipeline_runs는
+ * 건드리지 않고, 매번 delete-all-then-insert로 통째로 교체한다. */
+async function syncSpecialSchools(filePath: string) {
+  const data = JSON.parse(readFileSync(filePath, "utf-8")) as ProcessedSpecialSchools;
+
+  const rows = data.schools.map((s) => ({
+    school_name: s.schoolName,
+    province_name: s.provinceName,
+    foundation_type: s.foundationType,
+    disability_domain: s.disabilityDomain,
+    principal_name: s.principalName,
+    approval_date: s.approvalDate,
+    opening_date: s.openingDate,
+    principal_office_phone: s.principalOfficePhone,
+    admin_office_phone: s.adminOfficePhone,
+    teacher_office_phone: s.teacherOfficePhone,
+    fax_number: s.faxNumber,
+    zip_code: s.zipCode,
+    address: s.address,
+    homepage_url: s.homepageUrl,
+    reference_date: s.referenceDate,
+  }));
+  await replaceSpecialSchools(rows);
+
+  console.log(`[supabase-sync] specialschools 트랙 동기화 완료 (${data.date}) — ${rows.length}건`);
+}
+
 async function main() {
   const filePath = process.argv[2];
   if (!filePath) {
     console.error(
-      "사용법: tsx scripts/skills/supabase-sync.ts <data/processed/{ads,blog,news,budget,youtube,events,youthfacilities,disabilityorgs,disabilitysports,disabilitywelfare}_YYYY-MM-DD.json>"
+      "사용법: tsx scripts/skills/supabase-sync.ts <data/processed/{ads,blog,news,budget,youtube,events,youthfacilities,disabilityorgs,disabilitysports,disabilitywelfare,specialschools}_YYYY-MM-DD.json>"
     );
     process.exit(1);
   }
@@ -578,6 +627,8 @@ async function main() {
       await syncDisabilitySports(filePath);
     } else if (filename.startsWith("disabilitywelfare_")) {
       await syncDisabilityWelfare(filePath);
+    } else if (filename.startsWith("specialschools_")) {
+      await syncSpecialSchools(filePath);
     } else {
       await syncAds(filePath);
     }
@@ -591,7 +642,8 @@ async function main() {
       filename.startsWith("youthfacilities_") ||
       filename.startsWith("disabilityorgs_") ||
       filename.startsWith("disabilitysports_") ||
-      filename.startsWith("disabilitywelfare_");
+      filename.startsWith("disabilitywelfare_") ||
+      filename.startsWith("specialschools_");
     const track = filename.startsWith("blog_") ? "blog" : independentTrack ? undefined : "ad";
     if (date && track) await recordRun(date, track, "failed", (e as Error).message);
     console.error(`[supabase-sync] 실패: ${(e as Error).message}`);
