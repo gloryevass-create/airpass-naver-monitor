@@ -152,6 +152,25 @@ export async function deleteStaleTeamEvents(currentPageIds: string[]) {
   if (error) throw new Error(`team_events 삭제 실패: ${error.message}`);
 }
 
+/** 팀 노션 "사업진행 현황"을 매번 전체 다시 읽어와 그대로 덮어쓴다 — notion_page_id가
+ * 고유키. Notion 쪽에서 삭제된 항목은 이 upsert만으로는 안 지워지므로, 오늘 동기화에서
+ * 온 notion_page_id 목록에 없는 기존 행은 별도로 삭제한다(deleteStaleBusinessProjects). */
+export async function upsertBusinessProjects(rows: Tables["business_projects"]["Insert"][]) {
+  if (rows.length === 0) return;
+  const { error } = await getSupabaseClient()
+    .from("business_projects")
+    .upsert(rows, { onConflict: "notion_page_id" });
+  if (error) throw new Error(`business_projects upsert 실패: ${error.message}`);
+}
+
+export async function deleteStaleBusinessProjects(currentPageIds: string[]) {
+  const { error } = await getSupabaseClient()
+    .from("business_projects")
+    .delete()
+    .not("notion_page_id", "in", `(${currentPageIds.map((id) => `"${id}"`).join(",")})`);
+  if (error) throw new Error(`business_projects 삭제 실패: ${error.message}`);
+}
+
 export async function upsertDailyReport(row: Tables["daily_reports"]["Insert"]) {
   const { error } = await getSupabaseClient()
     .from("daily_reports")

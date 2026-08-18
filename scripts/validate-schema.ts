@@ -184,6 +184,36 @@ const ProcessedEventsSchema = z.object({
   ),
 });
 
+const ProcessedBusinessProjectsSchema = z.object({
+  date: z.string().regex(/^\d{4}-\d{2}-\d{2}$/, "date는 YYYY-MM-DD 형식이어야 합니다"),
+  projects: z.array(
+    z.object({
+      notionPageId: z.string().min(1),
+      title: z.string().min(1),
+      stage: z.string().nullable(),
+      status: z.string().nullable(),
+      orgName: z.string().nullable(),
+      participationType: z.string().nullable(),
+      workType: z.string().nullable(),
+      result: z.string().nullable(),
+      amount: z.number().nullable(),
+      progressRate: z.number().nullable(),
+      submissionDate: z.string().nullable(),
+      submissionDateIsDatetime: z.boolean(),
+      submissionMethod: z.string().nullable(),
+      presentationDate: z.string().nullable(),
+      presentationDateIsDatetime: z.boolean(),
+      constructionStart: z.string().nullable(),
+      constructionEnd: z.string().nullable(),
+      constructionContent: z.string().nullable(),
+      assignees: z.array(z.string()),
+      createdBy: z.string().nullable(),
+      notionCreatedAt: z.string().nullable(),
+      notionUrl: z.string().min(1),
+    })
+  ),
+});
+
 const ProcessedYouthFacilitiesSchema = z.object({
   date: z.string().regex(/^\d{4}-\d{2}-\d{2}$/, "date는 YYYY-MM-DD 형식이어야 합니다"),
   facilities: z.array(
@@ -305,27 +335,21 @@ function main() {
   }
 
   const filename = basename(filePath);
-  const schema = filename.startsWith("blog_")
-    ? ProcessedBlogSchema
-    : filename.startsWith("news_")
-      ? ProcessedNewsSchema
-      : filename.startsWith("budget_")
-        ? ProcessedBudgetSchema
-        : filename.startsWith("youtube_")
-          ? ProcessedYoutubeSchema
-          : filename.startsWith("events_")
-            ? ProcessedEventsSchema
-            : filename.startsWith("youthfacilities_")
-              ? ProcessedYouthFacilitiesSchema
-              : filename.startsWith("disabilityorgs_")
-                ? ProcessedDisabilityOrgsSchema
-                : filename.startsWith("disabilitysports_")
-                  ? ProcessedDisabilitySportsSchema
-                  : filename.startsWith("disabilitywelfare_")
-                    ? ProcessedDisabilityWelfareSchema
-                    : filename.startsWith("specialschools_")
-                      ? ProcessedSpecialSchoolsSchema
-                      : ProcessedAdsSchema;
+  const SCHEMA_BY_PREFIX: [string, z.ZodTypeAny][] = [
+    ["blog_", ProcessedBlogSchema],
+    ["news_", ProcessedNewsSchema],
+    ["budget_", ProcessedBudgetSchema],
+    ["youtube_", ProcessedYoutubeSchema],
+    ["events_", ProcessedEventsSchema],
+    ["businessprojects_", ProcessedBusinessProjectsSchema],
+    ["youthfacilities_", ProcessedYouthFacilitiesSchema],
+    ["disabilityorgs_", ProcessedDisabilityOrgsSchema],
+    ["disabilitysports_", ProcessedDisabilitySportsSchema],
+    ["disabilitywelfare_", ProcessedDisabilityWelfareSchema],
+    ["specialschools_", ProcessedSpecialSchoolsSchema],
+  ];
+  const schema =
+    SCHEMA_BY_PREFIX.find(([prefix]) => filename.startsWith(prefix))?.[1] ?? ProcessedAdsSchema;
 
   let json: unknown;
   try {

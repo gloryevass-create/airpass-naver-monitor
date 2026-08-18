@@ -16,7 +16,7 @@
 - **출력**: 공유 Supabase 프로젝트의 `keywords`, `keyword_daily_metrics`, `competitors`,
   `ad_spend_estimates`, `ad_account_daily_stats`, `blog_posts`, `blog_sov_daily`, `posting_cadence`,
   `pipeline_runs`, `daily_reports`, `alerts`, `news_articles`, `budget_bids`,
-  `youtube_channel_stats`, `youtube_videos`, `team_events`, `youth_facilities`,
+  `youtube_channel_stats`, `youtube_videos`, `team_events`, `business_projects`, `youth_facilities`,
   `disability_organizations`, `disability_sports_facilities`, `disability_welfare_centers`,
   `special_schools` 테이블. 로컬 `data/raw/`(원본 스냅샷)·
   `data/processed/`(정제본)·`output/`(자연어 리포트 md)도 감사/백업용으로 남긴다.
@@ -75,14 +75,15 @@
   `.claude/agents/news-monitor/AGENT.md` 지시대로 news-monitor(N1~N4, 뉴스+예산)를, 그다음
   `.claude/agents/youtube-monitor/AGENT.md` 지시대로 youtube-monitor(Y1~Y2)를, 마지막으로
   `.claude/agents/calendar-monitor/AGENT.md` 지시대로 calendar-monitor(E1~E2, 팀 노션 일정)를,
-  그다음 `.claude/agents/youth-facility-monitor/AGENT.md` 지시대로 youth-facility-monitor(F1~F2,
-  청소년관련기관)를, `.claude/agents/disability-org-monitor/AGENT.md` 지시대로
-  disability-org-monitor(G1~G2, 장애인관련기관)를, 마지막으로
+  그다음 `.claude/agents/business-monitor/AGENT.md` 지시대로 business-monitor(K1~K2, 팀 노션
+  사업진행 현황)를, 그다음 `.claude/agents/youth-facility-monitor/AGENT.md` 지시대로
+  youth-facility-monitor(F1~F2, 청소년관련기관)를, `.claude/agents/disability-org-monitor/AGENT.md`
+  지시대로 disability-org-monitor(G1~G2, 장애인관련기관)를, 마지막으로
   `.claude/agents/disability-sports-monitor/AGENT.md` 지시대로 disability-sports-monitor(H1~H2,
   장애인체육시설)를, 마지막으로 `.claude/agents/disability-welfare-monitor/AGENT.md` 지시대로
   disability-welfare-monitor(I1~I2, 장애인편의시설/장애인복지관류 공공시설)를, 마지막으로
   `.claude/agents/special-school-monitor/AGENT.md` 지시대로 special-school-monitor(J1~J2,
-  특수학교현황)를 실행한다 — 이 여덟 트랙은 키워드/경쟁사 데이터와 무관한 완전히 독립적인 트랙이라 A/B
+  특수학교현황)를 실행한다 — 이 아홉 트랙은 키워드/경쟁사 데이터와 무관한 완전히 독립적인 트랙이라 A/B
   트랙의 성공 여부와 상관없이 항상 실행한다.
 - **O2**: 오늘 날짜의 `pipeline_runs`에서 `track='ad'`와 `track='blog'`가 **둘 다** `status='success'`인
   경우에만 통합 리포트를 생성한다. `report-formatter` 스킬로 두 트랙의 리포트 내용을 종합해
@@ -106,6 +107,7 @@
   agents/news-monitor/     Track N 서브에이전트
   agents/youtube-monitor/  Track Y 서브에이전트
   agents/calendar-monitor/ Track E 서브에이전트
+  agents/business-monitor/ Track K 서브에이전트
   agents/youth-facility-monitor/ Track F 서브에이전트
   agents/disability-org-monitor/  Track G 서브에이전트
   agents/disability-sports-monitor/ Track H 서브에이전트
@@ -155,6 +157,7 @@ scripts/
 | `youtube_channel_stats` | `date` |
 | `youtube_videos` | `video_id` |
 | `team_events` | `notion_page_id` (Notion에서 삭제된 항목은 오늘 동기화에 없는 `notion_page_id`로 판단해 함께 삭제) |
+| `business_projects` | `notion_page_id` (Notion에서 삭제된 항목은 오늘 동기화에 없는 `notion_page_id`로 판단해 함께 삭제) |
 | `youth_facilities` | 자연키 없음 — 매번 delete-all-then-insert로 통째로 교체 |
 | `disability_organizations` | 자연키 없음 — 매번 delete-all-then-insert로 통째로 교체 |
 | `disability_sports_facilities` | 자연키 없음 — 매번 delete-all-then-insert로 통째로 교체 |
@@ -217,7 +220,9 @@ Google Cloud Console에서 "YouTube Data API v3"를 사용 설정하고 발급�
 Airpass전략기획 워크스페이스에 만든 Notion 내부 통합(internal integration)의 시크릿
 (`https://www.notion.so/my-integrations`) — 대상 데이터베이스(또는 상위 페이지)에
 "연결(Connections)"로 이 통합을 추가해야 API로 접근 가능하다. `NOTION_EVENTS_DATABASE_ID`는
-"행사 및 스케쥴" 데이터베이스의 ID. `YOUTH_FACILITY_SERVICE_KEY`는 공공데이터포털
+"행사 및 스케쥴" 데이터베이스의 ID. `NOTION_BUSINESS_DATABASE_ID`는 같은 워크스페이스의
+"사업진행 현황" 데이터베이스의 ID — 데이터베이스마다 통합 연결을 별도로 해줘야 하므로
+"행사 및 스케쥴"에 연결했다고 자동으로 접근되지 않는다. `YOUTH_FACILITY_SERVICE_KEY`는 공공데이터포털
 "청소년수련시설정보서비스"(getTeenTrftListV2) 활용신청(자동승인)으로 발급받은 일반
 인증키(Encoding) — `G2B_SERVICE_KEY`와 같은 data.go.kr 계정 키를 재사용해도 된다(둘 다
 같은 계정에서 서비스별로 별도 활용신청만 하면 됨). `DISABILITY_ORG_SERVICE_KEY`는 공공데이터포털
@@ -269,6 +274,7 @@ npm run fetch:news
 npm run fetch:budget
 npm run fetch:youtube
 npm run fetch:events
+npm run fetch:business-projects
 npm run fetch:youth-facilities
 npm run fetch:disability-orgs
 npm run fetch:disability-sports
@@ -281,6 +287,7 @@ npm run sync:supabase -- data/processed/news_YYYY-MM-DD.json
 npm run sync:supabase -- data/processed/budget_YYYY-MM-DD.json
 npm run sync:supabase -- data/processed/youtube_YYYY-MM-DD.json
 npm run sync:supabase -- data/processed/events_YYYY-MM-DD.json
+npm run sync:supabase -- data/processed/businessprojects_YYYY-MM-DD.json
 npm run sync:supabase -- data/processed/youthfacilities_YYYY-MM-DD.json
 npm run sync:supabase -- data/processed/disabilityorgs_YYYY-MM-DD.json
 npm run sync:supabase -- data/processed/disabilitysports_YYYY-MM-DD.json

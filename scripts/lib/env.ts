@@ -46,6 +46,9 @@ export const env = {
   get notionEventsDatabaseId() {
     return required("NOTION_EVENTS_DATABASE_ID");
   },
+  get notionBusinessDatabaseId() {
+    return required("NOTION_BUSINESS_DATABASE_ID");
+  },
   get youthFacilityServiceKey() {
     return required("YOUTH_FACILITY_SERVICE_KEY");
   },

@@ -18,6 +18,8 @@ import {
   upsertYoutubeVideos,
   upsertTeamEvents,
   deleteStaleTeamEvents,
+  upsertBusinessProjects,
+  deleteStaleBusinessProjects,
   replaceYouthFacilities,
   replaceDisabilityOrganizations,
   replaceDisabilitySportsFacilities,
@@ -115,6 +117,34 @@ type ProcessedEvents = {
     content: string | null;
     assignees: string[];
     attendees: string[];
+    notionUrl: string;
+  }[];
+};
+
+type ProcessedBusinessProjects = {
+  date: string;
+  projects: {
+    notionPageId: string;
+    title: string;
+    stage: string | null;
+    status: string | null;
+    orgName: string | null;
+    participationType: string | null;
+    workType: string | null;
+    result: string | null;
+    amount: number | null;
+    progressRate: number | null;
+    submissionDate: string | null;
+    submissionDateIsDatetime: boolean;
+    submissionMethod: string | null;
+    presentationDate: string | null;
+    presentationDateIsDatetime: boolean;
+    constructionStart: string | null;
+    constructionEnd: string | null;
+    constructionContent: string | null;
+    assignees: string[];
+    createdBy: string | null;
+    notionCreatedAt: string | null;
     notionUrl: string;
   }[];
 };
@@ -465,6 +495,44 @@ async function syncEvents(filePath: string) {
   console.log(`[supabase-sync] events 트랙 동기화 완료 (${data.date}) — ${rows.length}건`);
 }
 
+/** K2: 사업진행 현황 결과를 Supabase에 반영. news/budget/youtube/events와 마찬가지로
+ * 독립 데이터라 pipeline_runs는 건드리지 않는다. Notion에서 삭제된 항목은 오늘
+ * 동기화에 없는 notion_page_id로 판단해 함께 삭제한다(원본이 Notion이므로 그대로
+ * 미러링). */
+async function syncBusinessProjects(filePath: string) {
+  const data = JSON.parse(readFileSync(filePath, "utf-8")) as ProcessedBusinessProjects;
+
+  const rows = data.projects.map((p) => ({
+    notion_page_id: p.notionPageId,
+    title: p.title,
+    stage: p.stage,
+    status: p.status,
+    org_name: p.orgName,
+    participation_type: p.participationType,
+    work_type: p.workType,
+    result: p.result,
+    amount: p.amount,
+    progress_rate: p.progressRate,
+    submission_date: p.submissionDate,
+    submission_date_is_datetime: p.submissionDateIsDatetime,
+    submission_method: p.submissionMethod,
+    presentation_date: p.presentationDate,
+    presentation_date_is_datetime: p.presentationDateIsDatetime,
+    construction_start: p.constructionStart,
+    construction_end: p.constructionEnd,
+    construction_content: p.constructionContent,
+    assignees: p.assignees,
+    created_by: p.createdBy,
+    notion_created_at: p.notionCreatedAt,
+    notion_url: p.notionUrl,
+    synced_at: new Date().toISOString(),
+  }));
+  await upsertBusinessProjects(rows);
+  if (rows.length > 0) await deleteStaleBusinessProjects(rows.map((r) => r.notion_page_id));
+
+  console.log(`[supabase-sync] businessprojects 트랙 동기화 완료 (${data.date}) — ${rows.length}건`);
+}
+
 /** F2: 청소년관련기관DB 결과를 Supabase에 반영. 참고용 스냅샷이라 pipeline_runs는
  * 건드리지 않고, 매번 delete-all-then-insert로 통째로 교체한다. */
 async function syncYouthFacilities(filePath: string) {
@@ -602,7 +670,7 @@ async function main() {
   const filePath = process.argv[2];
   if (!filePath) {
     console.error(
-      "사용법: tsx scripts/skills/supabase-sync.ts <data/processed/{ads,blog,news,budget,youtube,events,youthfacilities,disabilityorgs,disabilitysports,disabilitywelfare,specialschools}_YYYY-MM-DD.json>"
+      "사용법: tsx scripts/skills/supabase-sync.ts <data/processed/{ads,blog,news,budget,youtube,events,businessprojects,youthfacilities,disabilityorgs,disabilitysports,disabilitywelfare,specialschools}_YYYY-MM-DD.json>"
     );
     process.exit(1);
   }
@@ -619,6 +687,8 @@ async function main() {
       await syncYoutube(filePath);
     } else if (filename.startsWith("events_")) {
       await syncEvents(filePath);
+    } else if (filename.startsWith("businessprojects_")) {
+      await syncBusinessProjects(filePath);
     } else if (filename.startsWith("youthfacilities_")) {
       await syncYouthFacilities(filePath);
     } else if (filename.startsWith("disabilityorgs_")) {
@@ -639,6 +709,7 @@ async function main() {
       filename.startsWith("budget_") ||
       filename.startsWith("youtube_") ||
       filename.startsWith("events_") ||
+      filename.startsWith("businessprojects_") ||
       filename.startsWith("youthfacilities_") ||
       filename.startsWith("disabilityorgs_") ||
       filename.startsWith("disabilitysports_") ||
