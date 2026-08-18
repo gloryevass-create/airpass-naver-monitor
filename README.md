@@ -16,7 +16,8 @@
    ([developers.naver.com/apps](https://developers.naver.com/apps) → 애플리케이션 등록, 검색광고 API와
    별개의 키. 블로그 검색 API 사용 권한을 켜야 함) — B2/B3(블로그 검색결과·경쟁사 게시물)에 사용
 4. **에어패스 자체 도메인** (`AIRPASS_DOMAIN`): 참고용(현재 코드에서 직접 쓰이진 않음)
-5. **경쟁사 목록** 5~10곳: 이름, 도메인, 네이버 블로그 ID → `config/competitors.yaml`에 등록
+5. **경쟁사 블로그 목록**: 정적 파일이 아니라 대시보드(`/dashboard/blog`)에서 팀원이 직접
+   등록·삭제한다(이름·도메인·네이버 블로그 ID) — 이 저장소에서 따로 준비할 파일 없음
 6. (선택) 제외할 키워드 → `config/keyword_exclude.yaml`
 
 ## 로컬 설정
@@ -28,8 +29,6 @@ cp .env.example .env
 npm install
 npm run typecheck
 ```
-
-`config/competitors.yaml`의 예시 값을 실제 경쟁사 정보로 교체하세요.
 
 ## 로컬 테스트 (개별 스킬)
 

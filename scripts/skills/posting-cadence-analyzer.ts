@@ -1,6 +1,6 @@
 import { readJson, writeJson, rawPath } from "../lib/files";
 import { todayKst } from "../lib/dates";
-import { loadCompetitors } from "../lib/config";
+import { fetchActiveCompetitors } from "../lib/competitors";
 import type { BlogPost } from "./naver-blog-fetch";
 
 export type CadenceResult = {
@@ -11,13 +11,13 @@ export type CadenceResult = {
 };
 
 /** B4: 포스팅 주기 계산 — 평균 발행 간격, 최근 게시일, 최근 30일 게시물 수. */
-export function analyzeCadence(date: string = todayKst()): CadenceResult[] {
+export async function analyzeCadence(date: string = todayKst()): Promise<CadenceResult[]> {
   const posts = readJson<BlogPost[]>(rawPath(date, "blog_posts.json"));
   if (!posts) {
     throw new Error(`${rawPath(date, "blog_posts.json")} 없음 — naver-blog-fetch를 먼저 실행하세요.`);
   }
 
-  const competitors = loadCompetitors();
+  const competitors = await fetchActiveCompetitors();
   const cutoff30d = new Date(`${date}T00:00:00Z`);
   cutoff30d.setUTCDate(cutoff30d.getUTCDate() - 30);
   const cutoffStr = cutoff30d.toISOString().slice(0, 10);
@@ -63,11 +63,10 @@ export function analyzeCadence(date: string = todayKst()): CadenceResult[] {
 }
 
 if (import.meta.url === `file://${process.argv[1]}`) {
-  try {
-    const r = analyzeCadence();
-    console.log(`[posting-cadence-analyzer] ${r.length}개 경쟁사 분석 완료`);
-  } catch (e) {
-    console.error(`[posting-cadence-analyzer] 실패: ${(e as Error).message}`);
-    process.exit(1);
-  }
+  analyzeCadence()
+    .then((r) => console.log(`[posting-cadence-analyzer] ${r.length}개 경쟁사 분석 완료`))
+    .catch((e) => {
+      console.error(`[posting-cadence-analyzer] 실패: ${e.message}`);
+      process.exit(1);
+    });
 }

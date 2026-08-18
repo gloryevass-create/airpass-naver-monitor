@@ -1,10 +1,9 @@
 import { readFileSync } from "node:fs";
 import { basename } from "node:path";
-import { loadCompetitors } from "../lib/config";
+import { fetchCompetitorIdMap } from "../lib/competitors";
 import type { Json } from "../lib/database.types";
 import { recordRun } from "../lib/pipeline-state";
 import {
-  ensureCompetitors,
   fetchKeywordIdMap,
   upsertKeywordDailyMetrics,
   upsertAdSpendEstimates,
@@ -138,7 +137,7 @@ type ProcessedYoutube = {
  * 스키마 검증을 통과한 파일만 여기까지 온다는 전제(Spec-First). */
 async function syncAds(filePath: string) {
   const data = JSON.parse(readFileSync(filePath, "utf-8")) as ProcessedAds;
-  const competitorMap = await ensureCompetitors(loadCompetitors());
+  const competitorMap = await fetchCompetitorIdMap();
   const keywordMap = await fetchKeywordIdMap();
 
   const metricRows = data.metrics
@@ -207,7 +206,7 @@ async function syncAds(filePath: string) {
 /** B8: Track B(blog_*.json) 결과를 Supabase에 반영. */
 async function syncBlog(filePath: string) {
   const data = JSON.parse(readFileSync(filePath, "utf-8")) as ProcessedBlog;
-  const competitorMap = await ensureCompetitors(loadCompetitors());
+  const competitorMap = await fetchCompetitorIdMap();
   const keywordMap = await fetchKeywordIdMap();
 
   const postRows = data.blog_posts

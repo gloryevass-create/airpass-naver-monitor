@@ -1,6 +1,6 @@
 import { writeJson, rawPath } from "../lib/files";
 import { todayKst } from "../lib/dates";
-import { loadCompetitors } from "../lib/config";
+import { fetchActiveCompetitors } from "../lib/competitors";
 import { searchBlog, type BlogSearchItem } from "../lib/naver-openapi-client";
 import { getOrFetchRssPosts } from "../lib/blog-rss";
 import { getOrComputeBlogContentKeywords, BLOG_KEYWORD_COUNT } from "../lib/blog-keyword-scope";
@@ -99,7 +99,7 @@ async function fetchBlogSerp(
 export async function fetchBlogData(
   date: string = todayKst()
 ): Promise<{ serp: BlogSerpResult[]; posts: BlogPost[] }> {
-  const competitors = loadCompetitors();
+  const competitors = await fetchActiveCompetitors();
   const blogIdToName = new Map(
     competitors.filter((c) => c.blog_id).map((c) => [c.blog_id as string, c.name])
   );

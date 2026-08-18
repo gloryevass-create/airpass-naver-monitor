@@ -5,39 +5,6 @@ type Tables = Database["public"]["Tables"];
 
 /** 모든 upsert는 스키마의 unique 제약과 정확히 일치하는 onConflict를 쓴다 — 멱등성 스펙 참고. */
 
-/**
- * competitors 테이블에는 name/domain에 unique 제약이 없다(스키마 고정 — 바꾸지 않음).
- * 그래서 upsert가 아니라 "이름으로 조회 → 없으면 insert" 방식으로 중복 생성을 막는다.
- * 반환값은 이후 다른 테이블(ad_spend_estimates 등)의 competitor_id 조회에 쓰는 name→id 맵.
- */
-export async function ensureCompetitors(
-  configCompetitors: { name: string; domain?: string | null; blog_id?: string | null }[]
-): Promise<Map<string, string>> {
-  const supabase = getSupabaseClient();
-  const { data: existing, error: selectError } = await supabase.from("competitors").select("*");
-  if (selectError) throw new Error(`competitors 조회 실패: ${selectError.message}`);
-
-  const nameToId = new Map((existing ?? []).map((c) => [c.name, c.id]));
-  const missing = configCompetitors.filter((c) => !nameToId.has(c.name));
-
-  if (missing.length > 0) {
-    const { data: inserted, error: insertError } = await supabase
-      .from("competitors")
-      .insert(
-        missing.map((c) => ({
-          name: c.name,
-          domain: c.domain ?? null,
-          blog_id: c.blog_id ?? null,
-        }))
-      )
-      .select("*");
-    if (insertError) throw new Error(`competitors insert 실패: ${insertError.message}`);
-    for (const c of inserted ?? []) nameToId.set(c.name, c.id);
-  }
-
-  return nameToId;
-}
-
 export async function upsertKeywords(rows: Tables["keywords"]["Insert"][]) {
   if (rows.length === 0) return;
   const { error } = await getSupabaseClient()

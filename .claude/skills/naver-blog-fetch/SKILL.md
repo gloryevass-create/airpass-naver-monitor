@@ -10,7 +10,7 @@ B2와 B3는 데이터 출처가 다르다 — `fetchBlogData()`가 둘 다 호�
 
 ## B3: 전체 포스팅 이력 (RSS, 포스팅 주기용) — 먼저 실행됨
 
-`config/competitors.yaml`의 `blog_id`마다(경쟁사 + 에어패스 자체 블로그 모두)
+Supabase `competitors` 테이블(`is_active=true`, 대시보드에서 관리)의 `blog_id`마다(경쟁사 + 에어패스 자체 블로그 모두)
 `https://rss.blog.naver.com/<blog_id>.xml`을 호출해 전체(최근) 게시물 목록을 얻는다
 (`scripts/lib/blog-rss.ts::getOrFetchRssPosts`, `data/raw/<날짜>/blog_posts_rss.json`에 캐시).
 

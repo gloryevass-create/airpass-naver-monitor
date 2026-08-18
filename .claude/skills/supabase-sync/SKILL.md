@@ -24,8 +24,8 @@ description: A8/B8 — 검증을 통과한 최종 processed JSON(ads_*.json / bl
    npx tsx scripts/skills/supabase-sync.ts data/processed/blog_<날짜>.json
    ```
 5. 이 스크립트가 하는 일(전부 "코드" — 판단 없음):
-   - `config/competitors.yaml`의 경쟁사를 이름 기준으로 조회하고, 없으면 새로 만든다
-     (`competitors` 테이블에는 unique 제약이 없어 upsert 대신 조회-후-생성으로 중복을 막는다).
+   - Supabase `competitors` 테이블(대시보드에서 관리, name unique)을 이름 기준으로 조회해
+     `competitor_id` 매핑을 만든다(`scripts/lib/competitors.ts::fetchCompetitorIdMap`).
    - `naver_keyword_id` → `keywords.id`(UUID) 매핑을 조회해 FK를 채운다.
    - 스키마의 unique 제약과 정확히 일치하는 `onConflict`로 각 테이블에 upsert한다
      (`date,keyword_id` / `date,competitor_id,keyword_id` / `date,keyword_id,competitor_id` /

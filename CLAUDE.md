@@ -98,7 +98,6 @@
   agents/youtube-monitor/  Track Y 서브에이전트
   agents/calendar-monitor/ Track E 서브에이전트
 config/
-  competitors.yaml         경쟁사 목록(수동 등록, 5~10곳)
   keyword_exclude.yaml     자동 동기화 키워드 중 제외 목록(선택)
 data/
   raw/YYYY-MM-DD/           원본 스냅샷(감사·재현용, git 미포함)
@@ -143,9 +142,9 @@ scripts/
 | `youtube_videos` | `video_id` |
 | `team_events` | `notion_page_id` (Notion에서 삭제된 항목은 오늘 동기화에 없는 `notion_page_id`로 판단해 함께 삭제) |
 
-(`competitors`는 unique 제약이 없어 이름 기준 "조회 후 없으면 생성"으로 중복을 막는다 —
-`scripts/lib/supabase-sync.ts::ensureCompetitors` 참고. `alerts`는 같은 날 여러 건이 허용되므로
-매번 insert한다.)
+(`competitors`는 이제 `name`에 unique 제약이 있다 — 마이그레이션 0013 이후 대시보드가 직접
+insert하므로 코드 쪽 "조회 후 없으면 생성" 우회 로직(`ensureCompetitors`)은 제거했다.
+`alerts`는 같은 날 여러 건이 허용되므로 매번 insert한다.)
 
 ## 뉴스·예산 모니터링 검색 키워드
 
@@ -154,6 +153,20 @@ scripts/
 마이그레이션 0010) — 팀원이 대시보드(`/dashboard/news`, `/dashboard/budget`)에서 직접
 추가·삭제하면 코드 배포 없이 다음 날 수집부터 바로 반영된다. 이 파이프라인은 이 테이블에
 쓰지 않고 읽기만 한다(쓰기는 대시보드의 authenticated 사용자 몫).
+
+## 경쟁사 블로그 관리
+
+`config/competitors.yaml` 정적 파일이 아니라 Supabase `competitors` 테이블(`is_active`
+컬럼)에서 읽는다(`scripts/lib/competitors.ts::fetchActiveCompetitors`, 마이그레이션 0013) —
+팀원이 대시보드(`/dashboard/blog`)에서 직접 추가·삭제하면 코드 배포 없이 다음 날 수집부터
+바로 반영된다. "삭제"는 실제 행 삭제가 아니라 `is_active=false`로 끄는 소프트 삭제다 —
+`blog_posts`/`blog_sov_daily`/`posting_cadence`/`ad_spend_estimates`가 `competitor_id`를
+`on delete cascade`로 참조하고 있어 하드 삭제하면 그 경쟁사의 누적 이력이 전부 같이
+사라지기 때문이다. 이 파이프라인은 이 테이블에 쓰지 않고 읽기만 한다(쓰기는 대시보드의
+authenticated 사용자 몫). `ad_spend_estimates` 등 다른 테이블의 `competitor_id` 매핑에는
+비활성 경쟁사도 포함한 `fetchAllCompetitors`/`fetchCompetitorIdMap`을 쓴다(과거 데이터
+참조가 끊기지 않도록) — 실제 오늘 수집 대상(블로그 RSS·SERP 검색)에만
+`fetchActiveCompetitors`를 쓴다.
 
 ## API 호출 대상 범위 (중요)
 

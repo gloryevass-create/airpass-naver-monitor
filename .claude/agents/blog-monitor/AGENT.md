@@ -12,8 +12,10 @@ Track B(네이버 블로그 경쟁사 모니터링)를 B1부터 B8까지 순서�
 
 ## 실행 순서
 
-1. **B1 — 키워드/경쟁사 목록 로드**: `config/competitors.yaml`을 읽고,
-   `npx tsx scripts/skills/naver-keyword-sync.ts`로 오늘의 키워드 목록을 확보한다(ad-monitor가
+1. **B1 — 키워드/경쟁사 목록 로드**: 경쟁사 블로그 목록은 Supabase `competitors` 테이블
+   (`is_active=true`, 대시보드 `/dashboard/blog`에서 팀원이 직접 등록·삭제)에서 읽는다
+   (`scripts/lib/competitors.ts::fetchActiveCompetitors`). 키워드는
+   `npx tsx scripts/skills/naver-keyword-sync.ts`로 오늘의 목록을 확보한다(ad-monitor가
    이미 실행했다면 같은 raw 파일을 재사용해도 되지만, 없으면 이 단계에서 직접 만든다).
 2. **B2/B3 — 블로그 검색결과·게시물 수집** (`naver-blog-fetch` 스킬): `npx tsx scripts/skills/naver-blog-fetch.ts`
 3. **B4 — 포스팅 주기** (`posting-cadence-analyzer` 스킬): `npx tsx scripts/skills/posting-cadence-analyzer.ts`

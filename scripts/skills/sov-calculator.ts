@@ -1,6 +1,6 @@
 import { readJson, writeJson, rawPath } from "../lib/files";
 import { todayKst } from "../lib/dates";
-import { loadCompetitors } from "../lib/config";
+import { fetchActiveCompetitors } from "../lib/competitors";
 import type { BlogSerpResult } from "./naver-blog-fetch";
 
 export type SovResult = {
@@ -10,13 +10,13 @@ export type SovResult = {
 };
 
 /** B5: 키워드별 블로그 노출 점유율(SOV) — 상위 N개 중 경쟁사별 등장 비율. */
-export function calculateSov(date: string = todayKst()): SovResult[] {
+export async function calculateSov(date: string = todayKst()): Promise<SovResult[]> {
   const serp = readJson<BlogSerpResult[]>(rawPath(date, "blog_serp_snapshot.json"));
   if (!serp) {
     throw new Error(`${rawPath(date, "blog_serp_snapshot.json")} 없음 — naver-blog-fetch를 먼저 실행하세요.`);
   }
 
-  const competitors = loadCompetitors();
+  const competitors = await fetchActiveCompetitors();
   const byBlogId = new Map(competitors.filter((c) => c.blog_id).map((c) => [c.blog_id, c.name]));
 
   const results: SovResult[] = [];
@@ -45,11 +45,10 @@ export function calculateSov(date: string = todayKst()): SovResult[] {
 }
 
 if (import.meta.url === `file://${process.argv[1]}`) {
-  try {
-    const r = calculateSov();
-    console.log(`[sov-calculator] ${r.length}건 SOV 산출 완료`);
-  } catch (e) {
-    console.error(`[sov-calculator] 실패: ${(e as Error).message}`);
-    process.exit(1);
-  }
+  calculateSov()
+    .then((r) => console.log(`[sov-calculator] ${r.length}건 SOV 산출 완료`))
+    .catch((e) => {
+      console.error(`[sov-calculator] 실패: ${e.message}`);
+      process.exit(1);
+    });
 }

@@ -1,6 +1,6 @@
 import { readJson, writeJson, rawPath } from "./files";
 import { todayKst } from "./dates";
-import { loadCompetitors } from "./config";
+import { fetchActiveCompetitors } from "./competitors";
 import { withRetry } from "./retry";
 
 const RSS_REQUEST_DELAY_MS = 1500;
@@ -38,7 +38,7 @@ export async function getOrFetchRssPosts(date: string = todayKst()): Promise<Rss
   const cached = readJson<RssPost[]>(rawPath(date, "blog_posts_rss.json"));
   if (cached) return cached;
 
-  const competitors = loadCompetitors();
+  const competitors = await fetchActiveCompetitors();
   const posts: RssPost[] = [];
 
   for (const c of competitors) {
