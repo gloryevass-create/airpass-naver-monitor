@@ -204,4 +204,25 @@ export async function replaceYouthFacilities(rows: Tables["youth_facilities"]["I
   }
 }
 
+/** 참고용 스냅샷 테이블이라 이력을 누적하지 않고 매번 통째로 교체한다(delete-all →
+ * bulk insert) — youth_facilities와 동일한 이유(자연키 없는 공공데이터). */
+export async function replaceDisabilityOrganizations(
+  rows: Tables["disability_organizations"]["Insert"][]
+) {
+  const supabase = getSupabaseClient();
+  const { error: deleteError } = await supabase
+    .from("disability_organizations")
+    .delete()
+    .not("id", "is", null);
+  if (deleteError) throw new Error(`disability_organizations 초기화 실패: ${deleteError.message}`);
+
+  if (rows.length === 0) return;
+  const BATCH_SIZE = 500;
+  for (let i = 0; i < rows.length; i += BATCH_SIZE) {
+    const batch = rows.slice(i, i + BATCH_SIZE);
+    const { error } = await supabase.from("disability_organizations").insert(batch);
+    if (error) throw new Error(`disability_organizations insert 실패: ${error.message}`);
+  }
+}
+
 export type { Json };

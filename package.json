@@ -17,6 +17,7 @@
     "fetch:youtube": "tsx --env-file=.env scripts/skills/youtube-fetch.ts",
     "fetch:events": "tsx --env-file=.env scripts/skills/notion-events-fetch.ts",
     "fetch:youth-facilities": "tsx --env-file=.env scripts/skills/youth-facility-fetch.ts",
+    "fetch:disability-orgs": "tsx --env-file=.env scripts/skills/disability-org-fetch.ts",
     "analyze:cadence": "tsx --env-file=.env scripts/skills/posting-cadence-analyzer.ts",
     "calculate:sov": "tsx --env-file=.env scripts/skills/sov-calculator.ts",
     "sync:supabase": "tsx --env-file=.env scripts/skills/supabase-sync.ts",

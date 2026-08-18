@@ -49,4 +49,7 @@ export const env = {
   get youthFacilityServiceKey() {
     return required("YOUTH_FACILITY_SERVICE_KEY");
   },
+  get disabilityOrgServiceKey() {
+    return required("DISABILITY_ORG_SERVICE_KEY");
+  },
 };
