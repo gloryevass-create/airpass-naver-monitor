@@ -14,6 +14,7 @@ import {
   upsertPostingCadence,
   upsertNewsArticles,
   upsertBudgetBids,
+  upsertPrespecNotices,
   upsertYoutubeChannelStats,
   upsertYoutubeVideos,
   upsertTeamEvents,
@@ -99,6 +100,26 @@ type ProcessedBudget = {
     notice_date?: string | null;
     opening_date?: string | null;
     detail_url?: string | null;
+  }[];
+};
+
+type ProcessedPrespec = {
+  date: string;
+  notices: {
+    keyword: string;
+    business_type: "cnstwk" | "servc" | "thng";
+    pre_spec_reg_no: string;
+    title: string;
+    ref_no?: string | null;
+    notice_inst?: string | null;
+    demand_inst?: string | null;
+    budget_amount?: number | null;
+    registered_at?: string | null;
+    opinion_close_at?: string | null;
+    official_name?: string | null;
+    official_tel?: string | null;
+    spec_doc_urls: string[];
+    bid_notice_nos: string[];
   }[];
 };
 
@@ -440,6 +461,33 @@ async function syncBudget(filePath: string) {
   console.log(`[supabase-sync] budget 트랙 동기화 완료 (${data.date}) — ${rows.length}건`);
 }
 
+/** N6: 사전규격 결과를 Supabase에 반영. news/budget과 마찬가지로 독립 데이터라
+ * pipeline_runs는 건드리지 않는다. */
+async function syncPrespec(filePath: string) {
+  const data = JSON.parse(readFileSync(filePath, "utf-8")) as ProcessedPrespec;
+
+  const rows = data.notices.map((n) => ({
+    keyword: n.keyword,
+    business_type: n.business_type,
+    pre_spec_reg_no: n.pre_spec_reg_no,
+    title: n.title,
+    ref_no: n.ref_no ?? null,
+    notice_inst: n.notice_inst ?? null,
+    demand_inst: n.demand_inst ?? null,
+    budget_amount: n.budget_amount ?? null,
+    registered_at: n.registered_at ?? null,
+    opinion_close_at: n.opinion_close_at ?? null,
+    official_name: n.official_name ?? null,
+    official_tel: n.official_tel ?? null,
+    spec_doc_urls: n.spec_doc_urls,
+    bid_notice_nos: n.bid_notice_nos,
+    collected_at: new Date().toISOString(),
+  }));
+  await upsertPrespecNotices(rows);
+
+  console.log(`[supabase-sync] prespec 트랙 동기화 완료 (${data.date}) — ${rows.length}건`);
+}
+
 /** Y2: 유튜브 채널 분석 결과를 Supabase에 반영. news/budget과 마찬가지로 독립 데이터라
  * pipeline_runs는 건드리지 않는다. */
 async function syncYoutube(filePath: string) {
@@ -670,7 +718,7 @@ async function main() {
   const filePath = process.argv[2];
   if (!filePath) {
     console.error(
-      "사용법: tsx scripts/skills/supabase-sync.ts <data/processed/{ads,blog,news,budget,youtube,events,businessprojects,youthfacilities,disabilityorgs,disabilitysports,disabilitywelfare,specialschools}_YYYY-MM-DD.json>"
+      "사용법: tsx scripts/skills/supabase-sync.ts <data/processed/{ads,blog,news,budget,prespec,youtube,events,businessprojects,youthfacilities,disabilityorgs,disabilitysports,disabilitywelfare,specialschools}_YYYY-MM-DD.json>"
     );
     process.exit(1);
   }
@@ -683,6 +731,8 @@ async function main() {
       await syncNews(filePath);
     } else if (filename.startsWith("budget_")) {
       await syncBudget(filePath);
+    } else if (filename.startsWith("prespec_")) {
+      await syncPrespec(filePath);
     } else if (filename.startsWith("youtube_")) {
       await syncYoutube(filePath);
     } else if (filename.startsWith("events_")) {
@@ -707,6 +757,7 @@ async function main() {
     const independentTrack =
       filename.startsWith("news_") ||
       filename.startsWith("budget_") ||
+      filename.startsWith("prespec_") ||
       filename.startsWith("youtube_") ||
       filename.startsWith("events_") ||
       filename.startsWith("businessprojects_") ||

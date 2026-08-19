@@ -118,6 +118,14 @@ export async function upsertBudgetBids(rows: Tables["budget_bids"]["Insert"][]) 
   if (error) throw new Error(`budget_bids upsert 실패: ${error.message}`);
 }
 
+export async function upsertPrespecNotices(rows: Tables["prespec_notices"]["Insert"][]) {
+  if (rows.length === 0) return;
+  const { error } = await getSupabaseClient()
+    .from("prespec_notices")
+    .upsert(rows, { onConflict: "pre_spec_reg_no" });
+  if (error) throw new Error(`prespec_notices upsert 실패: ${error.message}`);
+}
+
 export async function upsertYoutubeChannelStats(row: Tables["youtube_channel_stats"]["Insert"]) {
   const { error } = await getSupabaseClient()
     .from("youtube_channel_stats")

@@ -15,7 +15,7 @@
   "왜 스크래핑을 안 쓰는가" 참고.
 - **출력**: 공유 Supabase 프로젝트의 `keywords`, `keyword_daily_metrics`, `competitors`,
   `ad_spend_estimates`, `ad_account_daily_stats`, `blog_posts`, `blog_sov_daily`, `posting_cadence`,
-  `pipeline_runs`, `daily_reports`, `alerts`, `news_articles`, `budget_bids`,
+  `pipeline_runs`, `daily_reports`, `alerts`, `news_articles`, `budget_bids`, `prespec_notices`,
   `youtube_channel_stats`, `youtube_videos`, `team_events`, `business_projects`, `youth_facilities`,
   `disability_organizations`, `disability_sports_facilities`, `disability_welfare_centers`,
   `special_schools` 테이블. 로컬 `data/raw/`(원본 스냅샷)·
@@ -72,7 +72,7 @@
 - **O1**: `.claude/agents/ad-monitor/AGENT.md` 지시대로 ad-monitor(A0~A8)를 먼저 실행한다.
   끝나면 `.claude/agents/blog-monitor/AGENT.md` 지시대로 blog-monitor(B1~B8)를 실행한다.
   (두 트랙은 서로 독립이지만, 매일 실행에서는 순차로 진행해 리소스 경합을 피한다.) 마지막으로
-  `.claude/agents/news-monitor/AGENT.md` 지시대로 news-monitor(N1~N4, 뉴스+예산)를, 그다음
+  `.claude/agents/news-monitor/AGENT.md` 지시대로 news-monitor(N1~N6, 뉴스+예산+사전규격)를, 그다음
   `.claude/agents/youtube-monitor/AGENT.md` 지시대로 youtube-monitor(Y1~Y2)를, 마지막으로
   `.claude/agents/calendar-monitor/AGENT.md` 지시대로 calendar-monitor(E1~E2, 팀 노션 일정)를,
   그다음 `.claude/agents/business-monitor/AGENT.md` 지시대로 business-monitor(K1~K2, 팀 노션
@@ -154,6 +154,7 @@ scripts/
 | `daily_reports` | `date,report_type,track` |
 | `news_articles` | `link` |
 | `budget_bids` | `bid_no,bid_ord` |
+| `prespec_notices` | `pre_spec_reg_no` |
 | `youtube_channel_stats` | `date` |
 | `youtube_videos` | `video_id` |
 | `team_events` | `notion_page_id` (Notion에서 삭제된 항목은 오늘 동기화에 없는 `notion_page_id`로 판단해 함께 삭제) |
@@ -174,7 +175,8 @@ insert하므로 코드 쪽 "조회 후 없으면 생성" 우회 로직(`ensureCo
 `monitor_keywords` 테이블(track='news'|'budget')에서 읽는다(`scripts/lib/monitor-keywords.ts::fetchMonitorKeywords`,
 마이그레이션 0010) — 팀원이 대시보드(`/dashboard/news`, `/dashboard/budget`)에서 직접
 추가·삭제하면 코드 배포 없이 다음 날 수집부터 바로 반영된다. 이 파이프라인은 이 테이블에
-쓰지 않고 읽기만 한다(쓰기는 대시보드의 authenticated 사용자 몫).
+쓰지 않고 읽기만 한다(쓰기는 대시보드의 authenticated 사용자 몫). 사전규격(`prespec_notices`)도
+별도 키워드 목록 없이 track='budget' 키워드를 그대로 재사용한다(같은 영업 대응 목적).
 
 ## 경쟁사 블로그 관리
 
@@ -214,7 +216,9 @@ authenticated 사용자 몫). `ad_spend_estimates` 등 다른 테이블의 `comp
 별개, searchad.naver.com에서 발급), `NAVER_OPENAPI_*`는 블로그·뉴스 검색 API(NAVER API HUB,
 네이버클라우드플랫폼 콘솔에서 별도 애플리케이션 등록 필요) — 서로 다른 두 세트의 키다.
 `G2B_SERVICE_KEY`는 data.go.kr "조달청_나라장터 입찰공고정보서비스" 활용신청으로 발급받은
-일반 인증키(Encoding)를 **그대로**(재인코딩하지 않고) 붙여넣는다. `YOUTUBE_API_KEY`는
+일반 인증키(Encoding)를 **그대로**(재인코딩하지 않고) 붙여넣는다. 같은 값을 "조달청_나라장터
+사전규격정보서비스"(`HrcspSsstndrdInfoService`)에도 그대로 재사용한다 — 별도 활용신청 없이
+바로 동작함을 확인했다(2026-08-19). `YOUTUBE_API_KEY`는
 Google Cloud Console에서 "YouTube Data API v3"를 사용 설정하고 발급받은 API 키(OAuth
 불필요), `YOUTUBE_CHANNEL_HANDLE`은 `@` 없이 채널 핸들만(예: `AIRPASS_XR`). `NOTION_TOKEN`은
 Airpass전략기획 워크스페이스에 만든 Notion 내부 통합(internal integration)의 시크릿
@@ -272,6 +276,7 @@ npm run calculate:sov
 npm run estimate:spend
 npm run fetch:news
 npm run fetch:budget
+npm run fetch:prespec
 npm run fetch:youtube
 npm run fetch:events
 npm run fetch:business-projects
@@ -285,6 +290,7 @@ npm run fetch:special-schools
 npm run sync:supabase -- data/processed/ads_YYYY-MM-DD.json
 npm run sync:supabase -- data/processed/news_YYYY-MM-DD.json
 npm run sync:supabase -- data/processed/budget_YYYY-MM-DD.json
+npm run sync:supabase -- data/processed/prespec_YYYY-MM-DD.json
 npm run sync:supabase -- data/processed/youtube_YYYY-MM-DD.json
 npm run sync:supabase -- data/processed/events_YYYY-MM-DD.json
 npm run sync:supabase -- data/processed/businessprojects_YYYY-MM-DD.json

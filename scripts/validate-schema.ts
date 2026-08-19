@@ -142,6 +142,28 @@ const ProcessedBudgetSchema = z.object({
   ),
 });
 
+const ProcessedPrespecSchema = z.object({
+  date: z.string().regex(/^\d{4}-\d{2}-\d{2}$/, "date는 YYYY-MM-DD 형식이어야 합니다"),
+  notices: z.array(
+    z.object({
+      keyword: z.string().min(1),
+      business_type: z.enum(["cnstwk", "servc", "thng"]),
+      pre_spec_reg_no: z.string().min(1),
+      title: z.string().min(1),
+      ref_no: z.string().nullable().optional(),
+      notice_inst: z.string().nullable().optional(),
+      demand_inst: z.string().nullable().optional(),
+      budget_amount: z.number().nullable().optional(),
+      registered_at: z.string().nullable().optional(),
+      opinion_close_at: z.string().nullable().optional(),
+      official_name: z.string().nullable().optional(),
+      official_tel: z.string().nullable().optional(),
+      spec_doc_urls: z.array(z.string()),
+      bid_notice_nos: z.array(z.string()),
+    })
+  ),
+});
+
 const ProcessedYoutubeSchema = z.object({
   date: z.string().regex(/^\d{4}-\d{2}-\d{2}$/, "date는 YYYY-MM-DD 형식이어야 합니다"),
   channel: z.object({
@@ -339,6 +361,7 @@ function main() {
     ["blog_", ProcessedBlogSchema],
     ["news_", ProcessedNewsSchema],
     ["budget_", ProcessedBudgetSchema],
+    ["prespec_", ProcessedPrespecSchema],
     ["youtube_", ProcessedYoutubeSchema],
     ["events_", ProcessedEventsSchema],
     ["businessprojects_", ProcessedBusinessProjectsSchema],

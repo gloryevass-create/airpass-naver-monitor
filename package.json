@@ -14,6 +14,7 @@
     "fetch:blog": "tsx --env-file=.env scripts/skills/naver-blog-fetch.ts",
     "fetch:news": "tsx --env-file=.env scripts/skills/naver-news-fetch.ts",
     "fetch:budget": "tsx --env-file=.env scripts/skills/g2b-budget-fetch.ts",
+    "fetch:prespec": "tsx --env-file=.env scripts/skills/g2b-prespec-fetch.ts",
     "fetch:youtube": "tsx --env-file=.env scripts/skills/youtube-fetch.ts",
     "fetch:events": "tsx --env-file=.env scripts/skills/notion-events-fetch.ts",
     "fetch:business-projects": "tsx --env-file=.env scripts/skills/business-projects-fetch.ts",
