@@ -23,6 +23,7 @@
     "fetch:disability-sports": "tsx --env-file=.env scripts/skills/disability-sports-fetch.ts",
     "fetch:disability-welfare": "tsx --env-file=.env scripts/skills/disability-welfare-fetch.ts",
     "fetch:special-schools": "tsx --env-file=.env scripts/skills/special-school-fetch.ts",
+    "fetch:public-institutions": "tsx --env-file=.env scripts/skills/public-institution-fetch.ts",
     "analyze:cadence": "tsx --env-file=.env scripts/skills/posting-cadence-analyzer.ts",
     "calculate:sov": "tsx --env-file=.env scripts/skills/sov-calculator.ts",
     "sync:supabase": "tsx --env-file=.env scripts/skills/supabase-sync.ts",

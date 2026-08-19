@@ -26,6 +26,7 @@ import {
   replaceDisabilitySportsFacilities,
   replaceDisabilityWelfareCenters,
   replaceSpecialSchools,
+  replacePublicInstitutions,
   insertAlerts,
   upsertDailyReport,
 } from "../lib/supabase-sync";
@@ -270,6 +271,18 @@ type ProcessedSpecialSchools = {
     address: string | null;
     homepageUrl: string | null;
     referenceDate: string | null;
+  }[];
+};
+
+type ProcessedPublicInstitutions = {
+  date: string;
+  institutions: {
+    siteName: string;
+    institutionType: string | null;
+    institutionCategory: string | null;
+    detailCategory: string | null;
+    siteType: string | null;
+    url: string | null;
   }[];
 };
 
@@ -714,11 +727,29 @@ async function syncSpecialSchools(filePath: string) {
   console.log(`[supabase-sync] specialschools 트랙 동기화 완료 (${data.date}) — ${rows.length}건`);
 }
 
+/** L2: 공공기관정보 결과를 Supabase에 반영. 참고용 스냅샷이라 pipeline_runs는
+ * 건드리지 않고, 매번 delete-all-then-insert로 통째로 교체한다. */
+async function syncPublicInstitutions(filePath: string) {
+  const data = JSON.parse(readFileSync(filePath, "utf-8")) as ProcessedPublicInstitutions;
+
+  const rows = data.institutions.map((i) => ({
+    site_name: i.siteName,
+    institution_type: i.institutionType,
+    institution_category: i.institutionCategory,
+    detail_category: i.detailCategory,
+    site_type: i.siteType,
+    url: i.url,
+  }));
+  await replacePublicInstitutions(rows);
+
+  console.log(`[supabase-sync] publicinstitutions 트랙 동기화 완료 (${data.date}) — ${rows.length}건`);
+}
+
 async function main() {
   const filePath = process.argv[2];
   if (!filePath) {
     console.error(
-      "사용법: tsx scripts/skills/supabase-sync.ts <data/processed/{ads,blog,news,budget,prespec,youtube,events,businessprojects,youthfacilities,disabilityorgs,disabilitysports,disabilitywelfare,specialschools}_YYYY-MM-DD.json>"
+      "사용법: tsx scripts/skills/supabase-sync.ts <data/processed/{ads,blog,news,budget,prespec,youtube,events,businessprojects,youthfacilities,disabilityorgs,disabilitysports,disabilitywelfare,specialschools,publicinstitutions}_YYYY-MM-DD.json>"
     );
     process.exit(1);
   }
@@ -749,6 +780,8 @@ async function main() {
       await syncDisabilityWelfare(filePath);
     } else if (filename.startsWith("specialschools_")) {
       await syncSpecialSchools(filePath);
+    } else if (filename.startsWith("publicinstitutions_")) {
+      await syncPublicInstitutions(filePath);
     } else {
       await syncAds(filePath);
     }
@@ -765,7 +798,8 @@ async function main() {
       filename.startsWith("disabilityorgs_") ||
       filename.startsWith("disabilitysports_") ||
       filename.startsWith("disabilitywelfare_") ||
-      filename.startsWith("specialschools_");
+      filename.startsWith("specialschools_") ||
+      filename.startsWith("publicinstitutions_");
     const track = filename.startsWith("blog_") ? "blog" : independentTrack ? undefined : "ad";
     if (date && track) await recordRun(date, track, "failed", (e as Error).message);
     console.error(`[supabase-sync] 실패: ${(e as Error).message}`);

@@ -18,7 +18,7 @@
   `pipeline_runs`, `daily_reports`, `alerts`, `news_articles`, `budget_bids`, `prespec_notices`,
   `youtube_channel_stats`, `youtube_videos`, `team_events`, `business_projects`, `youth_facilities`,
   `disability_organizations`, `disability_sports_facilities`, `disability_welfare_centers`,
-  `special_schools` 테이블. 로컬 `data/raw/`(원본 스냅샷)·
+  `special_schools`, `public_institutions` 테이블. 로컬 `data/raw/`(원본 스냅샷)·
   `data/processed/`(정제본)·`output/`(자연어 리포트 md)도 감사/백업용으로 남긴다.
 - **역할 분담**: 결정적 단계(API 호출, 계산, DB 쓰기)는 `scripts/`의 TypeScript 코드가 하고,
   판단이 필요한 단계(이상치 서술, 리포트 작성, 콘텐츠 톤 분석)는 이 파일과
@@ -83,8 +83,9 @@
   장애인체육시설)를, 마지막으로 `.claude/agents/disability-welfare-monitor/AGENT.md` 지시대로
   disability-welfare-monitor(I1~I2, 장애인편의시설/장애인복지관류 공공시설)를, 마지막으로
   `.claude/agents/special-school-monitor/AGENT.md` 지시대로 special-school-monitor(J1~J2,
-  특수학교현황)를 실행한다 — 이 아홉 트랙은 키워드/경쟁사 데이터와 무관한 완전히 독립적인 트랙이라 A/B
-  트랙의 성공 여부와 상관없이 항상 실행한다.
+  특수학교현황)를, 마지막으로 `.claude/agents/public-institution-monitor/AGENT.md` 지시대로
+  public-institution-monitor(L1~L2, 공공기관정보)를 실행한다 — 이 열 트랙은 키워드/경쟁사 데이터와
+  무관한 완전히 독립적인 트랙이라 A/B 트랙의 성공 여부와 상관없이 항상 실행한다.
 - **O2**: 오늘 날짜의 `pipeline_runs`에서 `track='ad'`와 `track='blog'`가 **둘 다** `status='success'`인
   경우에만 통합 리포트를 생성한다. `report-formatter` 스킬로 두 트랙의 리포트 내용을 종합해
   `daily_reports`(`track='combined'`)에 upsert하고 `output/daily/<날짜>_daily_combined.md`로 저장한다.
@@ -113,6 +114,7 @@
   agents/disability-sports-monitor/ Track H 서브에이전트
   agents/disability-welfare-monitor/ Track I 서브에이전트
   agents/special-school-monitor/  Track J 서브에이전트
+  agents/public-institution-monitor/ Track L 서브에이전트
 config/
   keyword_exclude.yaml     자동 동기화 키워드 중 제외 목록(선택)
 data/
@@ -164,6 +166,7 @@ scripts/
 | `disability_sports_facilities` | 자연키 없음 — 매번 delete-all-then-insert로 통째로 교체 |
 | `disability_welfare_centers` | 자연키 없음 — 매번 delete-all-then-insert로 통째로 교체 |
 | `special_schools` | 자연키 없음 — 매번 delete-all-then-insert로 통째로 교체 |
+| `public_institutions` | 자연키 없음 — 매번 delete-all-then-insert로 통째로 교체 |
 
 (`competitors`는 이제 `name`에 unique 제약이 있다 — 마이그레이션 0013 이후 대시보드가 직접
 insert하므로 코드 쪽 "조회 후 없으면 생성" 우회 로직(`ensureCompetitors`)은 제거했다.
@@ -240,7 +243,9 @@ Airpass전략기획 워크스페이스에 만든 Notion 내부 통합(internal i
 (`scripts/lib/disability-welfare-client.ts` 참고, 사용자 확인 2026-08-18).
 `SPECIAL_SCHOOL_SERVICE_KEY`는 공공데이터포털 "교육부 국립특수교육원_특수학교현황"
 (odcloud.kr 표준 API, namespace 15052682/v1) 활용신청으로 발급받은 일반 인증키 — 전국
-196개교 규모라 1회 호출로 전체가 수집된다.
+196개교 규모라 1회 호출로 전체가 수집된다. `PUBLIC_INSTITUTION_SERVICE_KEY`는 공공데이터포털
+"행정안전부_공공기관 웹,모바일웹 사이트 정보"(odcloud.kr 표준 API, namespace 15050540/v1)
+활용신청으로 발급받은 일반 인증키 — 전국 591개 기관 규모라 1회 호출로 전체가 수집된다.
 
 ## 트러블슈팅
 
@@ -285,6 +290,7 @@ npm run fetch:disability-orgs
 npm run fetch:disability-sports
 npm run fetch:disability-welfare
 npm run fetch:special-schools
+npm run fetch:public-institutions
 
 # 최종 반영 (검증 통과한 data/processed/*.json에 대해)
 npm run sync:supabase -- data/processed/ads_YYYY-MM-DD.json
@@ -299,6 +305,7 @@ npm run sync:supabase -- data/processed/disabilityorgs_YYYY-MM-DD.json
 npm run sync:supabase -- data/processed/disabilitysports_YYYY-MM-DD.json
 npm run sync:supabase -- data/processed/disabilitywelfare_YYYY-MM-DD.json
 npm run sync:supabase -- data/processed/specialschools_YYYY-MM-DD.json
+npm run sync:supabase -- data/processed/publicinstitutions_YYYY-MM-DD.json
 
 # 전체 파이프라인 (claude -p 헤드리스)
 npm run run:daily

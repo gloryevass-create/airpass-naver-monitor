@@ -64,4 +64,7 @@ export const env = {
   get specialSchoolServiceKey() {
     return required("SPECIAL_SCHOOL_SERVICE_KEY");
   },
+  get publicInstitutionServiceKey() {
+    return required("PUBLIC_INSTITUTION_SERVICE_KEY");
+  },
 };

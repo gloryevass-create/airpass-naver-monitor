@@ -313,4 +313,23 @@ export async function replaceSpecialSchools(rows: Tables["special_schools"]["Ins
   }
 }
 
+/** 참고용 스냅샷 테이블이라 이력을 누적하지 않고 매번 통째로 교체한다(delete-all →
+ * bulk insert) — 다른 참고용 DB 테이블들과 동일한 이유. */
+export async function replacePublicInstitutions(rows: Tables["public_institutions"]["Insert"][]) {
+  const supabase = getSupabaseClient();
+  const { error: deleteError } = await supabase
+    .from("public_institutions")
+    .delete()
+    .not("id", "is", null);
+  if (deleteError) throw new Error(`public_institutions 초기화 실패: ${deleteError.message}`);
+
+  if (rows.length === 0) return;
+  const BATCH_SIZE = 500;
+  for (let i = 0; i < rows.length; i += BATCH_SIZE) {
+    const batch = rows.slice(i, i + BATCH_SIZE);
+    const { error } = await supabase.from("public_institutions").insert(batch);
+    if (error) throw new Error(`public_institutions insert 실패: ${error.message}`);
+  }
+}
+
 export type { Json };

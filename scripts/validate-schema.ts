@@ -349,6 +349,20 @@ const ProcessedSpecialSchoolsSchema = z.object({
   ),
 });
 
+const ProcessedPublicInstitutionsSchema = z.object({
+  date: z.string().regex(/^\d{4}-\d{2}-\d{2}$/, "date는 YYYY-MM-DD 형식이어야 합니다"),
+  institutions: z.array(
+    z.object({
+      siteName: z.string().min(1),
+      institutionType: z.string().nullable(),
+      institutionCategory: z.string().nullable(),
+      detailCategory: z.string().nullable(),
+      siteType: z.string().nullable(),
+      url: z.string().nullable(),
+    })
+  ),
+});
+
 function main() {
   const filePath = process.argv[2];
   if (!filePath) {
@@ -370,6 +384,7 @@ function main() {
     ["disabilitysports_", ProcessedDisabilitySportsSchema],
     ["disabilitywelfare_", ProcessedDisabilityWelfareSchema],
     ["specialschools_", ProcessedSpecialSchoolsSchema],
+    ["publicinstitutions_", ProcessedPublicInstitutionsSchema],
   ];
   const schema =
     SCHEMA_BY_PREFIX.find(([prefix]) => filename.startsWith(prefix))?.[1] ?? ProcessedAdsSchema;
