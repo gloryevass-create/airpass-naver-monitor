@@ -18,7 +18,8 @@
   `pipeline_runs`, `daily_reports`, `alerts`, `news_articles`, `budget_bids`, `prespec_notices`,
   `youtube_channel_stats`, `youtube_videos`, `team_events`, `business_projects`, `youth_facilities`,
   `disability_organizations`, `disability_sports_facilities`, `disability_welfare_centers`,
-  `special_schools`, `public_institutions`, `senior_welfare_facilities` 테이블. 로컬 `data/raw/`(원본 스냅샷)·
+  `special_schools`, `public_institutions`, `senior_welfare_facilities`, `notifications` 테이블.
+  로컬 `data/raw/`(원본 스냅샷)·
   `data/processed/`(정제본)·`output/`(자연어 리포트 md)도 감사/백업용으로 남긴다.
 - **역할 분담**: 결정적 단계(API 호출, 계산, DB 쓰기)는 `scripts/`의 TypeScript 코드가 하고,
   판단이 필요한 단계(이상치 서술, 리포트 작성, 콘텐츠 톤 분석)는 이 파일과
@@ -175,6 +176,21 @@ scripts/
 (`competitors`는 이제 `name`에 unique 제약이 있다 — 마이그레이션 0013 이후 대시보드가 직접
 insert하므로 코드 쪽 "조회 후 없으면 생성" 우회 로직(`ensureCompetitors`)은 제거했다.
 `alerts`는 같은 날 여러 건이 허용되므로 매번 insert한다.)
+
+## 알림(팀 공유 피드)
+
+대시보드 `notifications` 테이블(팀 전체 공유, 읽음 상태는 사용자별로 `notification_reads`에
+따로 기록)에 팀일정 신규 등록, 비즈니스 신규 등록·진행단계(stage)/상태(status) 변경, 유튜브
+신규 업로드, 검색광고 비즈머니 잔액이 30만원 미만으로 새로 떨어질 때(`scripts/lib/supabase-sync.ts`의
+`diffNewTeamEvents`/`diffBusinessProjectChanges`/`diffNewYoutubeVideos`/`checkBizmoneyDrop`)
+service_role로 직접 알림을 삽입한다. **diff 함수는 반드시 해당 트랙의 upsert 호출
+"이전"에 먼저 실행해야 한다** — upsert 전 Supabase에 남아있는 값이 "어제까지의 상태"이기
+때문이다(`scripts/skills/supabase-sync.ts`의 `syncEvents`/`syncBusinessProjects`/`syncYoutube`/
+`syncAds` 참고). 필드 단위 변경 감지는 팀일정·유튜브는 신규 항목만(수정 diff는 범위 밖),
+비즈니스는 신규 등록 + stage/status 변경까지만 다룬다(사용자 확인, 2026-08-21). 광고전략메모
+작성과 조달입찰공고/사전규격 스크랩 알림은 이 파이프라인이 아니라 대시보드 자체가 직접
+삽입한다(`airpass-naver-dashboard`의 `app/dashboard/memos/actions.ts`,
+`app/dashboard/actions/scraps.ts`).
 
 ## 뉴스·예산 모니터링 검색 키워드
 

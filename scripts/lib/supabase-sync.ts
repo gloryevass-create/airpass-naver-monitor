@@ -352,4 +352,122 @@ export async function replaceSeniorWelfareFacilities(rows: Tables["senior_welfar
   }
 }
 
+// ============================================================================
+// 알림(팀 공유 피드) — 대시보드의 notifications 테이블에 service_role로 직접 삽입한다.
+// diff 계열 함수는 반드시 해당 트랙의 upsert 호출 "이전"에 먼저 실행해야 한다 —
+// upsert 전 Supabase에 남아있는 값이 "어제까지의 상태"이기 때문이다. 팀일정/비즈니스
+// /유튜브는 신규 항목만 감지한다(필드 단위 변경 diff는 범위 밖 — 사용자 확인,
+// 2026-08-21). 비즈니스는 stage/status 변경도 추가로 감지한다(참고 화면 예시가
+// 진행 단계 변화를 알려주는 형태였음).
+export async function insertNotifications(rows: Tables["notifications"]["Insert"][]) {
+  if (rows.length === 0) return;
+  const { error } = await getSupabaseClient().from("notifications").insert(rows);
+  if (error) throw new Error(`notifications insert 실패: ${error.message}`);
+}
+
+/** 팀일정(E) — 신규 일정만 감지해 알림 row를 만든다. */
+export async function diffNewTeamEvents(
+  rows: Tables["team_events"]["Insert"][]
+): Promise<Tables["notifications"]["Insert"][]> {
+  if (rows.length === 0) return [];
+  const { data: existing, error } = await getSupabaseClient().from("team_events").select("notion_page_id");
+  if (error) throw new Error(`team_events 기존 상태 조회 실패: ${error.message}`);
+  const existingIds = new Set((existing ?? []).map((r) => r.notion_page_id));
+
+  return rows
+    .filter((r) => !existingIds.has(r.notion_page_id))
+    .map((r) => ({
+      type: "event" as const,
+      title: r.title,
+      message: `새 일정이 등록되었습니다 (${r.date_start.slice(0, 10)})`,
+      link: "/dashboard/events",
+    }));
+}
+
+/** 비즈니스(K) — 신규 프로젝트 등록과, 기존 프로젝트의 진행단계(stage)/상태(status)
+ * 변경을 감지해 알림 row를 만든다. */
+export async function diffBusinessProjectChanges(
+  rows: Tables["business_projects"]["Insert"][]
+): Promise<Tables["notifications"]["Insert"][]> {
+  if (rows.length === 0) return [];
+  const { data: existing, error } = await getSupabaseClient()
+    .from("business_projects")
+    .select("notion_page_id, stage, status");
+  if (error) throw new Error(`business_projects 기존 상태 조회 실패: ${error.message}`);
+  const existingMap = new Map((existing ?? []).map((r) => [r.notion_page_id, r]));
+
+  const notifications: Tables["notifications"]["Insert"][] = [];
+  for (const r of rows) {
+    const prev = existingMap.get(r.notion_page_id);
+    if (!prev) {
+      notifications.push({
+        type: "business",
+        title: r.title,
+        message: "새 사업이 등록되었습니다.",
+        link: "/dashboard/business",
+      });
+    } else if (prev.stage !== r.stage || prev.status !== r.status) {
+      const parts = [];
+      if (prev.stage !== r.stage) parts.push(`단계: ${prev.stage ?? "-"} → ${r.stage ?? "-"}`);
+      if (prev.status !== r.status) parts.push(`상태: ${prev.status ?? "-"} → ${r.status ?? "-"}`);
+      notifications.push({
+        type: "business",
+        title: r.title,
+        message: parts.join(", "),
+        link: "/dashboard/business",
+      });
+    }
+  }
+  return notifications;
+}
+
+/** 유튜브(Y) — 신규 업로드 영상만 감지해 알림 row를 만든다. */
+export async function diffNewYoutubeVideos(
+  rows: Tables["youtube_videos"]["Insert"][]
+): Promise<Tables["notifications"]["Insert"][]> {
+  if (rows.length === 0) return [];
+  const { data: existing, error } = await getSupabaseClient().from("youtube_videos").select("video_id");
+  if (error) throw new Error(`youtube_videos 기존 상태 조회 실패: ${error.message}`);
+  const existingIds = new Set((existing ?? []).map((r) => r.video_id));
+
+  return rows
+    .filter((r) => !existingIds.has(r.video_id))
+    .map((r) => ({
+      type: "youtube" as const,
+      title: r.title,
+      message: "새 영상이 업로드되었습니다.",
+      link: "/dashboard/youtube",
+    }));
+}
+
+const BIZMONEY_LOW_THRESHOLD = 300_000;
+
+/** 네이버키워드(A) — 검색광고 비즈머니 잔액이 30만원 미만으로 "새로 떨어졌을 때"만
+ * 알림을 만든다(이미 낮은 상태가 계속돼도 매일 알림이 반복되지 않도록 임계값을
+ * 아래로 통과하는 순간만 감지). */
+export async function checkBizmoneyDrop(newBizmoney: number): Promise<Tables["notifications"]["Insert"][]> {
+  const { data: prevRow, error } = await getSupabaseClient()
+    .from("ad_account_daily_stats")
+    .select("bizmoney")
+    .not("bizmoney", "is", null)
+    .order("date", { ascending: false })
+    .limit(1)
+    .maybeSingle();
+  if (error) throw new Error(`ad_account_daily_stats(bizmoney) 기존 상태 조회 실패: ${error.message}`);
+
+  const prevBizmoney = prevRow?.bizmoney != null ? Number(prevRow.bizmoney) : null;
+  const crossedBelow =
+    prevBizmoney != null && prevBizmoney >= BIZMONEY_LOW_THRESHOLD && newBizmoney < BIZMONEY_LOW_THRESHOLD;
+
+  if (!crossedBelow) return [];
+  return [
+    {
+      type: "budget_low",
+      title: "네이버 검색광고 비즈머니 잔액 부족",
+      message: `잔액이 ${newBizmoney.toLocaleString("ko-KR")}원으로 30만원 미만입니다.`,
+      link: "/dashboard/keywords",
+    },
+  ];
+}
+
 export type { Json };

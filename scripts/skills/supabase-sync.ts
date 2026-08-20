@@ -30,6 +30,11 @@ import {
   replaceSeniorWelfareFacilities,
   insertAlerts,
   upsertDailyReport,
+  insertNotifications,
+  diffNewTeamEvents,
+  diffBusinessProjectChanges,
+  diffNewYoutubeVideos,
+  checkBizmoneyDrop,
 } from "../lib/supabase-sync";
 
 type ProcessedAds = {
@@ -372,7 +377,11 @@ async function syncAds(filePath: string) {
     }));
     await upsertAdAccountDailyStats(statRows);
     if (data.account_stats.bizmoney != null) {
+      // 잔액이 30만원 미만으로 "새로 떨어졌을 때"만 알림을 만들어야 하므로, upsert로
+      // 오늘 값을 덮어쓰기 전에 어제까지의 값을 기준으로 먼저 판정한다.
+      const bizmoneyNotifications = await checkBizmoneyDrop(data.account_stats.bizmoney);
       await upsertAdAccountBizmoney(data.date, data.account_stats.bizmoney);
+      await insertNotifications(bizmoneyNotifications);
     }
   }
 
@@ -542,7 +551,10 @@ async function syncYoutube(filePath: string) {
     duration_seconds: v.duration_seconds ?? null,
     thumbnail_url: v.thumbnail_url ?? null,
   }));
+  // upsert로 오늘 목록을 덮어쓰기 전에, 어제까지 없던 video_id인지 먼저 판정한다.
+  const youtubeNotifications = await diffNewYoutubeVideos(videoRows);
   await upsertYoutubeVideos(videoRows);
+  await insertNotifications(youtubeNotifications);
 
   console.log(`[supabase-sync] youtube 트랙 동기화 완료 (${data.date}) — 영상 ${videoRows.length}건`);
 }
@@ -569,8 +581,11 @@ async function syncEvents(filePath: string) {
     notion_url: e.notionUrl,
     updated_at: new Date().toISOString(),
   }));
+  // upsert로 덮어쓰기 전에, 어제까지 없던 notion_page_id인지 먼저 판정한다.
+  const eventNotifications = await diffNewTeamEvents(rows);
   await upsertTeamEvents(rows);
   if (rows.length > 0) await deleteStaleTeamEvents(rows.map((r) => r.notion_page_id));
+  await insertNotifications(eventNotifications);
 
   console.log(`[supabase-sync] events 트랙 동기화 완료 (${data.date}) — ${rows.length}건`);
 }
@@ -607,8 +622,11 @@ async function syncBusinessProjects(filePath: string) {
     notion_url: p.notionUrl,
     synced_at: new Date().toISOString(),
   }));
+  // upsert로 덮어쓰기 전에, 어제까지의 stage/status를 기준으로 신규/변경을 먼저 판정한다.
+  const businessNotifications = await diffBusinessProjectChanges(rows);
   await upsertBusinessProjects(rows);
   if (rows.length > 0) await deleteStaleBusinessProjects(rows.map((r) => r.notion_page_id));
+  await insertNotifications(businessNotifications);
 
   console.log(`[supabase-sync] businessprojects 트랙 동기화 완료 (${data.date}) — ${rows.length}건`);
 }
