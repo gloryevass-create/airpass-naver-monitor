@@ -363,6 +363,26 @@ const ProcessedPublicInstitutionsSchema = z.object({
   ),
 });
 
+const ProcessedSeniorWelfareSchema = z.object({
+  date: z.string().regex(/^\d{4}-\d{2}-\d{2}$/, "date는 YYYY-MM-DD 형식이어야 합니다"),
+  facilities: z.array(
+    z.object({
+      facilityName: z.string().min(1),
+      facilityType: z.string().nullable(),
+      provinceName: z.string().nullable(),
+      roadAddress: z.string().nullable(),
+      lotAddress: z.string().nullable(),
+      latitude: z.number().nullable(),
+      longitude: z.number().nullable(),
+      businessStatus: z.string().nullable(),
+      phoneNumber: z.string().nullable(),
+      managingOrgName: z.string().nullable(),
+      providingInstName: z.string().nullable(),
+      referenceDate: z.string().nullable(),
+    })
+  ),
+});
+
 function main() {
   const filePath = process.argv[2];
   if (!filePath) {
@@ -385,6 +405,7 @@ function main() {
     ["disabilitywelfare_", ProcessedDisabilityWelfareSchema],
     ["specialschools_", ProcessedSpecialSchoolsSchema],
     ["publicinstitutions_", ProcessedPublicInstitutionsSchema],
+    ["seniorwelfare_", ProcessedSeniorWelfareSchema],
   ];
   const schema =
     SCHEMA_BY_PREFIX.find(([prefix]) => filename.startsWith(prefix))?.[1] ?? ProcessedAdsSchema;

@@ -67,4 +67,7 @@ export const env = {
   get publicInstitutionServiceKey() {
     return required("PUBLIC_INSTITUTION_SERVICE_KEY");
   },
+  get seniorWelfareServiceKey() {
+    return required("SENIOR_WELFARE_SERVICE_KEY");
+  },
 };
