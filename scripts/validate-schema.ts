@@ -206,36 +206,6 @@ const ProcessedEventsSchema = z.object({
   ),
 });
 
-const ProcessedBusinessProjectsSchema = z.object({
-  date: z.string().regex(/^\d{4}-\d{2}-\d{2}$/, "date는 YYYY-MM-DD 형식이어야 합니다"),
-  projects: z.array(
-    z.object({
-      notionPageId: z.string().min(1),
-      title: z.string().min(1),
-      stage: z.string().nullable(),
-      status: z.string().nullable(),
-      orgName: z.string().nullable(),
-      participationType: z.string().nullable(),
-      workType: z.string().nullable(),
-      result: z.string().nullable(),
-      amount: z.number().nullable(),
-      progressRate: z.number().nullable(),
-      submissionDate: z.string().nullable(),
-      submissionDateIsDatetime: z.boolean(),
-      submissionMethod: z.string().nullable(),
-      presentationDate: z.string().nullable(),
-      presentationDateIsDatetime: z.boolean(),
-      constructionStart: z.string().nullable(),
-      constructionEnd: z.string().nullable(),
-      constructionContent: z.string().nullable(),
-      assignees: z.array(z.string()),
-      createdBy: z.string().nullable(),
-      notionCreatedAt: z.string().nullable(),
-      notionUrl: z.string().min(1),
-    })
-  ),
-});
-
 const ProcessedYouthFacilitiesSchema = z.object({
   date: z.string().regex(/^\d{4}-\d{2}-\d{2}$/, "date는 YYYY-MM-DD 형식이어야 합니다"),
   facilities: z.array(
@@ -398,7 +368,6 @@ function main() {
     ["prespec_", ProcessedPrespecSchema],
     ["youtube_", ProcessedYoutubeSchema],
     ["events_", ProcessedEventsSchema],
-    ["businessprojects_", ProcessedBusinessProjectsSchema],
     ["youthfacilities_", ProcessedYouthFacilitiesSchema],
     ["disabilityorgs_", ProcessedDisabilityOrgsSchema],
     ["disabilitysports_", ProcessedDisabilitySportsSchema],

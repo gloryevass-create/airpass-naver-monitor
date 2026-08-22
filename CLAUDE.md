@@ -16,7 +16,7 @@
 - **출력**: 공유 Supabase 프로젝트의 `keywords`, `keyword_daily_metrics`, `competitors`,
   `ad_spend_estimates`, `ad_account_daily_stats`, `blog_posts`, `blog_sov_daily`, `posting_cadence`,
   `pipeline_runs`, `daily_reports`, `alerts`, `news_articles`, `budget_bids`, `prespec_notices`,
-  `youtube_channel_stats`, `youtube_videos`, `team_events`, `business_projects`, `youth_facilities`,
+  `youtube_channel_stats`, `youtube_videos`, `team_events`, `youth_facilities`,
   `disability_organizations`, `disability_sports_facilities`, `disability_welfare_centers`,
   `special_schools`, `public_institutions`, `senior_welfare_facilities`, `notifications` 테이블.
   로컬 `data/raw/`(원본 스냅샷)·
@@ -76,8 +76,7 @@
   `.claude/agents/news-monitor/AGENT.md` 지시대로 news-monitor(N1~N6, 뉴스+예산+사전규격)를, 그다음
   `.claude/agents/youtube-monitor/AGENT.md` 지시대로 youtube-monitor(Y1~Y2)를, 마지막으로
   `.claude/agents/calendar-monitor/AGENT.md` 지시대로 calendar-monitor(E1~E2, 팀 노션 일정)를,
-  그다음 `.claude/agents/business-monitor/AGENT.md` 지시대로 business-monitor(K1~K2, 팀 노션
-  사업진행 현황)를, 그다음 `.claude/agents/youth-facility-monitor/AGENT.md` 지시대로
+  그다음 `.claude/agents/youth-facility-monitor/AGENT.md` 지시대로
   youth-facility-monitor(F1~F2, 청소년관련기관)를, `.claude/agents/disability-org-monitor/AGENT.md`
   지시대로 disability-org-monitor(G1~G2, 장애인관련기관)를, 마지막으로
   `.claude/agents/disability-sports-monitor/AGENT.md` 지시대로 disability-sports-monitor(H1~H2,
@@ -87,7 +86,7 @@
   특수학교현황)를, `.claude/agents/public-institution-monitor/AGENT.md` 지시대로
   public-institution-monitor(L1~L2, 공공기관정보)를, 마지막으로
   `.claude/agents/senior-welfare-monitor/AGENT.md` 지시대로 senior-welfare-monitor(M1~M2,
-  시니어복지시설/경로당)를 실행한다 — 이 열한 트랙은 키워드/경쟁사 데이터와
+  시니어복지시설/경로당)를 실행한다 — 이 열 트랙은 키워드/경쟁사 데이터와
   무관한 완전히 독립적인 트랙이라 A/B 트랙의 성공 여부와 상관없이 항상 실행한다.
 - **O2**: 오늘 날짜의 `pipeline_runs`에서 `track='ad'`와 `track='blog'`가 **둘 다** `status='success'`인
   경우에만 통합 리포트를 생성한다. `report-formatter` 스킬로 두 트랙의 리포트 내용을 종합해
@@ -111,7 +110,6 @@
   agents/news-monitor/     Track N 서브에이전트
   agents/youtube-monitor/  Track Y 서브에이전트
   agents/calendar-monitor/ Track E 서브에이전트
-  agents/business-monitor/ Track K 서브에이전트
   agents/youth-facility-monitor/ Track F 서브에이전트
   agents/disability-org-monitor/  Track G 서브에이전트
   agents/disability-sports-monitor/ Track H 서브에이전트
@@ -164,7 +162,6 @@ scripts/
 | `youtube_channel_stats` | `date` |
 | `youtube_videos` | `video_id` |
 | `team_events` | `notion_page_id` (Notion에서 삭제된 항목은 오늘 동기화에 없는 `notion_page_id`로 판단해 함께 삭제) |
-| `business_projects` | `notion_page_id` (Notion에서 삭제된 항목은 오늘 동기화에 없는 `notion_page_id`로 판단해 함께 삭제) |
 | `youth_facilities` | 자연키 없음 — 매번 delete-all-then-insert로 통째로 교체 |
 | `disability_organizations` | 자연키 없음 — 매번 delete-all-then-insert로 통째로 교체 |
 | `disability_sports_facilities` | 자연키 없음 — 매번 delete-all-then-insert로 통째로 교체 |
@@ -180,15 +177,14 @@ insert하므로 코드 쪽 "조회 후 없으면 생성" 우회 로직(`ensureCo
 ## 알림(팀 공유 피드)
 
 대시보드 `notifications` 테이블(팀 전체 공유, 읽음 상태는 사용자별로 `notification_reads`에
-따로 기록)에 팀일정 신규 등록, 비즈니스 신규 등록·진행단계(stage)/상태(status) 변경, 유튜브
+따로 기록)에 팀일정 신규 등록, 유튜브
 신규 업로드, 검색광고 비즈머니 잔액이 30만원 미만으로 새로 떨어질 때(`scripts/lib/supabase-sync.ts`의
-`diffNewTeamEvents`/`diffBusinessProjectChanges`/`diffNewYoutubeVideos`/`checkBizmoneyDrop`)
+`diffNewTeamEvents`/`diffNewYoutubeVideos`/`checkBizmoneyDrop`)
 service_role로 직접 알림을 삽입한다. **diff 함수는 반드시 해당 트랙의 upsert 호출
 "이전"에 먼저 실행해야 한다** — upsert 전 Supabase에 남아있는 값이 "어제까지의 상태"이기
-때문이다(`scripts/skills/supabase-sync.ts`의 `syncEvents`/`syncBusinessProjects`/`syncYoutube`/
-`syncAds` 참고). 필드 단위 변경 감지는 팀일정·유튜브는 신규 항목만(수정 diff는 범위 밖),
-비즈니스는 신규 등록 + stage/status 변경까지만 다룬다(사용자 확인, 2026-08-21). 광고전략메모
-작성과 조달입찰공고/사전규격 스크랩 알림은 이 파이프라인이 아니라 대시보드 자체가 직접
+때문이다(`scripts/skills/supabase-sync.ts`의 `syncEvents`/`syncYoutube`/
+`syncAds` 참고). 필드 단위 변경 감지는 팀일정·유튜브 모두 신규 항목만 다룬다(수정 diff는
+범위 밖). 광고전략메모 작성과 조달입찰공고/사전규격 스크랩 알림은 이 파이프라인이 아니라 대시보드 자체가 직접
 삽입한다(`airpass-naver-dashboard`의 `app/dashboard/memos/actions.ts`,
 `app/dashboard/actions/scraps.ts`).
 
@@ -247,9 +243,7 @@ Google Cloud Console에서 "YouTube Data API v3"를 사용 설정하고 발급�
 Airpass전략기획 워크스페이스에 만든 Notion 내부 통합(internal integration)의 시크릿
 (`https://www.notion.so/my-integrations`) — 대상 데이터베이스(또는 상위 페이지)에
 "연결(Connections)"로 이 통합을 추가해야 API로 접근 가능하다. `NOTION_EVENTS_DATABASE_ID`는
-"행사 및 스케쥴" 데이터베이스의 ID. `NOTION_BUSINESS_DATABASE_ID`는 같은 워크스페이스의
-"사업진행 현황" 데이터베이스의 ID — 데이터베이스마다 통합 연결을 별도로 해줘야 하므로
-"행사 및 스케쥴"에 연결했다고 자동으로 접근되지 않는다. `YOUTH_FACILITY_SERVICE_KEY`는 공공데이터포털
+"행사 및 스케쥴" 데이터베이스의 ID. `YOUTH_FACILITY_SERVICE_KEY`는 공공데이터포털
 "청소년수련시설정보서비스"(getTeenTrftListV2) 활용신청(자동승인)으로 발급받은 일반
 인증키(Encoding) — `G2B_SERVICE_KEY`와 같은 data.go.kr 계정 키를 재사용해도 된다(둘 다
 같은 계정에서 서비스별로 별도 활용신청만 하면 됨). `DISABILITY_ORG_SERVICE_KEY`는 공공데이터포털
@@ -310,7 +304,6 @@ npm run fetch:budget
 npm run fetch:prespec
 npm run fetch:youtube
 npm run fetch:events
-npm run fetch:business-projects
 npm run fetch:youth-facilities
 npm run fetch:disability-orgs
 npm run fetch:disability-sports
@@ -326,7 +319,6 @@ npm run sync:supabase -- data/processed/budget_YYYY-MM-DD.json
 npm run sync:supabase -- data/processed/prespec_YYYY-MM-DD.json
 npm run sync:supabase -- data/processed/youtube_YYYY-MM-DD.json
 npm run sync:supabase -- data/processed/events_YYYY-MM-DD.json
-npm run sync:supabase -- data/processed/businessprojects_YYYY-MM-DD.json
 npm run sync:supabase -- data/processed/youthfacilities_YYYY-MM-DD.json
 npm run sync:supabase -- data/processed/disabilityorgs_YYYY-MM-DD.json
 npm run sync:supabase -- data/processed/disabilitysports_YYYY-MM-DD.json

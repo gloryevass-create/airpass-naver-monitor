@@ -17,7 +17,6 @@
     "fetch:prespec": "tsx --env-file=.env scripts/skills/g2b-prespec-fetch.ts",
     "fetch:youtube": "tsx --env-file=.env scripts/skills/youtube-fetch.ts",
     "fetch:events": "tsx --env-file=.env scripts/skills/notion-events-fetch.ts",
-    "fetch:business-projects": "tsx --env-file=.env scripts/skills/business-projects-fetch.ts",
     "fetch:youth-facilities": "tsx --env-file=.env scripts/skills/youth-facility-fetch.ts",
     "fetch:disability-orgs": "tsx --env-file=.env scripts/skills/disability-org-fetch.ts",
     "fetch:disability-sports": "tsx --env-file=.env scripts/skills/disability-sports-fetch.ts",

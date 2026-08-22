@@ -160,25 +160,6 @@ export async function deleteStaleTeamEvents(currentPageIds: string[]) {
   if (error) throw new Error(`team_events 삭제 실패: ${error.message}`);
 }
 
-/** 팀 노션 "사업진행 현황"을 매번 전체 다시 읽어와 그대로 덮어쓴다 — notion_page_id가
- * 고유키. Notion 쪽에서 삭제된 항목은 이 upsert만으로는 안 지워지므로, 오늘 동기화에서
- * 온 notion_page_id 목록에 없는 기존 행은 별도로 삭제한다(deleteStaleBusinessProjects). */
-export async function upsertBusinessProjects(rows: Tables["business_projects"]["Insert"][]) {
-  if (rows.length === 0) return;
-  const { error } = await getSupabaseClient()
-    .from("business_projects")
-    .upsert(rows, { onConflict: "notion_page_id" });
-  if (error) throw new Error(`business_projects upsert 실패: ${error.message}`);
-}
-
-export async function deleteStaleBusinessProjects(currentPageIds: string[]) {
-  const { error } = await getSupabaseClient()
-    .from("business_projects")
-    .delete()
-    .not("notion_page_id", "in", `(${currentPageIds.map((id) => `"${id}"`).join(",")})`);
-  if (error) throw new Error(`business_projects 삭제 실패: ${error.message}`);
-}
-
 export async function upsertDailyReport(row: Tables["daily_reports"]["Insert"]) {
   const { error } = await getSupabaseClient()
     .from("daily_reports")
@@ -382,43 +363,6 @@ export async function diffNewTeamEvents(
       message: `새 일정이 등록되었습니다 (${r.date_start.slice(0, 10)})`,
       link: "/dashboard/events",
     }));
-}
-
-/** 비즈니스(K) — 신규 프로젝트 등록과, 기존 프로젝트의 진행단계(stage)/상태(status)
- * 변경을 감지해 알림 row를 만든다. */
-export async function diffBusinessProjectChanges(
-  rows: Tables["business_projects"]["Insert"][]
-): Promise<Tables["notifications"]["Insert"][]> {
-  if (rows.length === 0) return [];
-  const { data: existing, error } = await getSupabaseClient()
-    .from("business_projects")
-    .select("notion_page_id, stage, status");
-  if (error) throw new Error(`business_projects 기존 상태 조회 실패: ${error.message}`);
-  const existingMap = new Map((existing ?? []).map((r) => [r.notion_page_id, r]));
-
-  const notifications: Tables["notifications"]["Insert"][] = [];
-  for (const r of rows) {
-    const prev = existingMap.get(r.notion_page_id);
-    if (!prev) {
-      notifications.push({
-        type: "business",
-        title: r.title,
-        message: "새 사업이 등록되었습니다.",
-        link: "/dashboard/business",
-      });
-    } else if (prev.stage !== r.stage || prev.status !== r.status) {
-      const parts = [];
-      if (prev.stage !== r.stage) parts.push(`단계: ${prev.stage ?? "-"} → ${r.stage ?? "-"}`);
-      if (prev.status !== r.status) parts.push(`상태: ${prev.status ?? "-"} → ${r.status ?? "-"}`);
-      notifications.push({
-        type: "business",
-        title: r.title,
-        message: parts.join(", "),
-        link: "/dashboard/business",
-      });
-    }
-  }
-  return notifications;
 }
 
 /** 유튜브(Y) — 신규 업로드 영상만 감지해 알림 row를 만든다. */

@@ -6,8 +6,8 @@
         "hooks": [
           {
             "type": "command",
-            "command": "jq -r '.tool_input.file_path // .tool_response.filePath // empty' | { read -r f; case \"$f\" in *data/processed/ads_*.json|*data/processed/news_*.json|*data/processed/budget_*.json|*data/processed/prespec_*.json|*data/processed/youtube_*.json|*data/processed/events_*.json|*data/processed/businessprojects_*.json|*data/processed/youthfacilities_*.json|*data/processed/disabilityorgs_*.json|*data/processed/disabilitysports_*.json|*data/processed/disabilitywelfare_*.json|*data/processed/specialschools_*.json|*data/processed/publicinstitutions_*.json|*data/processed/seniorwelfare_*.json) npx tsx scripts/validate-schema.ts \"$f\" || exit 2 ;; esac; }",
-            "statusMessage": "data/processed/{ads,news,budget,prespec,youtube,events,businessprojects,youthfacilities,disabilityorgs,disabilitysports,disabilitywelfare,specialschools,publicinstitutions,seniorwelfare}_*.json 스키마 검증 중..."
+            "command": "jq -r '.tool_input.file_path // .tool_response.filePath // empty' | { read -r f; case \"$f\" in *data/processed/ads_*.json|*data/processed/news_*.json|*data/processed/budget_*.json|*data/processed/prespec_*.json|*data/processed/youtube_*.json|*data/processed/events_*.json|*data/processed/youthfacilities_*.json|*data/processed/disabilityorgs_*.json|*data/processed/disabilitysports_*.json|*data/processed/disabilitywelfare_*.json|*data/processed/specialschools_*.json|*data/processed/publicinstitutions_*.json|*data/processed/seniorwelfare_*.json) npx tsx scripts/validate-schema.ts \"$f\" || exit 2 ;; esac; }",
+            "statusMessage": "data/processed/{ads,news,budget,prespec,youtube,events,youthfacilities,disabilityorgs,disabilitysports,disabilitywelfare,specialschools,publicinstitutions,seniorwelfare}_*.json 스키마 검증 중..."
           },
           {
             "type": "command",
