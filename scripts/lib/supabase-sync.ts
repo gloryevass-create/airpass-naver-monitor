@@ -81,6 +81,15 @@ export async function upsertBlogPosts(rows: Tables["blog_posts"]["Insert"][]) {
   if (error) throw new Error(`blog_posts upsert 실패: ${error.message}`);
 }
 
+/** 대시보드의 "콘텐츠 매칭 키워드"와 동일하게, 그날 새로 수집한 RSS 스냅샷이 아니라
+ * 지금까지 누적된 전체 블로그 게시물 제목을 기준으로 키워드-제목 겹침을 계산할 때 쓴다
+ * (blog-keyword-scope.ts::getOrComputeBlogContentKeywords 참고). */
+export async function fetchAllBlogPostTitles(): Promise<string[]> {
+  const { data, error } = await getSupabaseClient().from("blog_posts").select("title");
+  if (error) throw new Error(`blog_posts 제목 조회 실패: ${error.message}`);
+  return (data ?? []).map((r) => r.title).filter((t): t is string => Boolean(t));
+}
+
 export async function upsertBlogSovDaily(rows: Tables["blog_sov_daily"]["Insert"][]) {
   if (rows.length === 0) return;
   const { error } = await getSupabaseClient()
